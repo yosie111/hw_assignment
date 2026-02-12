@@ -11,7 +11,7 @@ module.exports = {
   // Browser
   HEADLESS: process.env.HEADLESS !== 'false',         // default: true
   DEFAULT_TIMEOUT: 10_000,                             // 10s per action
-  NAVIGATION_TIMEOUT: 15_000,                          // 15s per navigation
+  NAVIGATION_TIMEOUT: 35_000,                          // 3.5s per navigation
 
   // Retry
   RETRY_MAX_ATTEMPTS: 3,

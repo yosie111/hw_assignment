@@ -8,14 +8,12 @@ const CURRENCY_MAP = {
 };
 
 /**
- * Normalize a price string to { price: number, currency: string }.
+ * Normalize a price string into a numeric value and currency code.
+ * "$29.99" → { price: 29.99, currency: "USD" }
  *
- * Examples:
- *   "$29.99" → { price: 29.99, currency: "USD" }
- *   "€15.50" → { price: 15.50, currency: "EUR" }
- *
- * @param {string} priceString - Raw price text from DOM
+ * @param {string} priceString - Raw price text from DOM (e.g. "$29.99")
  * @returns {{ price: number, currency: string }}
+ * @throws {Error} If input is invalid or cannot be parsed
  */
 function normalizePrice(priceString) {
   if (!priceString || typeof priceString !== 'string') {

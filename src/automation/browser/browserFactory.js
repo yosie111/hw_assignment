@@ -4,8 +4,8 @@ const { chromium, firefox } = require('playwright');
 const config = require('../config');
 
 /**
- * Launch a Playwright browser with configured settings.
- * Returns { browser, context, page } — caller is responsible for browser.close().
+ * Launch Chromium browser (default).
+ * @returns {Promise<{ browser, context, page }>}
  */
 async function launchBrowser() {
   const browser = await chromium.launch({
@@ -23,6 +23,11 @@ async function launchBrowser() {
   return { browser, context, page };
 }
 
+/**
+ * Launch Firefox browser.
+ * Install first: npx playwright install firefox
+ * @returns {Promise<{ browser, context, page }>}
+ */
 async function launchFirefox() {
   const browser = await firefox.launch({
     headless: config.HEADLESS,
