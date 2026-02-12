@@ -6,13 +6,6 @@
  * Note: Full validation (zod) happens in Services/API layer.
  */
 
-/**
- * Validate search input parameters.
- *
- * @param {Object} params
- * @param {string} [params.query] - Search text (optional, can be empty)
- * @param {Object} [params.filters] - { maxPrice?: number }
- */
 function validateSearchInput({ query, filters }) {
   if (query !== undefined && typeof query !== 'string') {
     throw new Error('query must be a string');
@@ -26,13 +19,6 @@ function validateSearchInput({ query, filters }) {
   }
 }
 
-/**
- * Validate purchase input parameters.
- *
- * @param {Object} params
- * @param {string} params.productTitle - Product name to find
- * @param {Object} params.shipping - { firstName, lastName, postalCode }
- */
 function validatePurchaseInput({ productTitle, shipping }) {
   if (!productTitle || typeof productTitle !== 'string') {
     throw new Error('productTitle is required');

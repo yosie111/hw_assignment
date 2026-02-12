@@ -9,21 +9,16 @@
  * Services layer passes onStep callback that saves status to a Map.
  * API layer exposes GET /api/status/:requestId that reads from that Map.
  * UI polls that endpoint to show progress.
- *
- * @param {string} requestId - Unique request identifier
- * @param {Function} [onStep] - Callback: (event) => void
- * @returns {{ runStep: Function, getSteps: Function }}
  */
 function createStepLogger(requestId, onStep) {
-  const steps = []; // track all steps for summary
+  const steps = [];
 
   return {
     /**
-     * Execute a step with logging and status reporting.
-     *
+     * Run an async step with logging and status reporting.
      * @param {string} stepName - Name of the step (e.g. 'Login', 'AddToCart')
      * @param {Function} fn - Async function to execute
-     * @returns {Promise<*>} - Result of fn()
+     * @returns {Promise<*>} Result of fn()
      */
     async runStep(stepName, fn) {
       const start = Date.now();
@@ -71,10 +66,7 @@ function createStepLogger(requestId, onStep) {
       }
     },
 
-    /**
-     * Get history of all executed steps.
-     * @returns {Array<Object>}
-     */
+    /** Get all completed steps for summary */
     getSteps() {
       return steps;
     },
