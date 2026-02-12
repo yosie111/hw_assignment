@@ -1,60 +1,68 @@
 // src/domain/Cart.js
 
 /**
- * Cart domain model.
- * Holds a list of products and provides total calculation.
+ * Cart — Aggregate Root managing product collection integrity.
+ *
+ * ★ Design decisions (per research doc):
+ *   - Aggregate Root: guards business invariants (no duplicates)
+ *   - Immutable Style: spread operator for add, filter for remove
+ *   - getItems() returns a COPY — external code can't mutate internal state
+ *   - Domain-level validation (not UI-level)
+ *
+ * @returns {Cart} Cart instance with add/remove/clear/getItems/getCount/isEmpty
  */
+function createCart() {
+  let items = [];
 
-class Cart {
-  constructor() {
-    this.items = [];
-  }
+  return {
+    /**
+     * Add a product to the cart.
+     * ★ Business rule: duplicate IDs are rejected (Aggregate Root pattern)
+     * @param {Product} product - Frozen Product object from createProduct()
+     * @throws {Error} If product is invalid or already in cart
+     */
+    addItem(product) {
+      if (!product || !product.id) {
+        throw new Error('Cannot add invalid product to cart');
+      }
+      if (items.find(item => item.id === product.id)) {
+        throw new Error(`Product "${product.id}" already in cart`);
+      }
+      // ★ Immutable style — new array, not push()
+      items = [...items, product];
+    },
 
-  /**
-   * Add a product to the cart.
-   * @param {Object} product — must have { title, price }
-   */
-  addItem(product) {
-    if (!product || typeof product.price !== 'number') {
-      throw new Error('Cannot add item: product must have a numeric price');
-    }
-    this.items.push(product);
-  }
+    /**
+     * Remove a product by id.
+     * ★ Uses filter (immutable) instead of splice (mutating)
+     */
+    removeItem(productId) {
+      items = items.filter(item => item.id !== productId);
+    },
 
-  /**
-   * Get the subtotal (sum of all item prices).
-   * @returns {number}
-   */
-  getTotal() {
-    return this.items.reduce((sum, item) => sum + item.price, 0);
-  }
+    /** Clear all items */
+    clear() {
+      items = [];
+    },
 
-  /**
-   * Get the number of items in the cart.
-   * @returns {number}
-   */
-  get count() {
-    return this.items.length;
-  }
+    /**
+     * Get all items.
+     * ★ Returns a COPY — external code cannot mutate internal state
+     */
+    getItems() {
+      return [...items];
+    },
 
-  /**
-   * Clear all items from the cart.
-   */
-  clear() {
-    this.items = [];
-  }
+    /** Get number of items */
+    getCount() {
+      return items.length;
+    },
 
-  toJSON() {
-    return {
-      items: this.items.map(item => ({
-        id: item.id,
-        title: item.title,
-        price: item.price,
-      })),
-      count: this.count,
-      total: this.getTotal(),
-    };
-  }
+    /** Check if empty */
+    isEmpty() {
+      return items.length === 0;
+    },
+  };
 }
 
-module.exports = { Cart };
+module.exports = { createCart };

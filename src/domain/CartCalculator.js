@@ -1,77 +1,86 @@
-// src/domain/CartCalculator.js
+// src/domain/cartCalculator.js
 
 /**
- * ★ G4 — Cart calculation and verification.
+ * Cart Calculator — The Oracle (independent source of truth).
  *
- * Independent calculation of subtotal, tax, and total.
- * Used in checkoutFlow to compare our calculation vs DOM values,
- * ensuring the site's math is correct (or detecting discrepancies).
+ * ★ Core concept from research doc:
+ * This module does NOT "ask" the browser what the total is.
+ * It CALCULATES what the total SHOULD be.
+ * When automation compares this vs the site's DOM value,
+ * it performs REAL validation of the site's business logic.
  *
- * Saucedemo uses an 8% tax rate — configurable via taxRate param.
+ * ★ Key design decisions:
+ *   - Pure Functions — same input = same output, no side effects
+ *   - Subtotal Tax (not Line-Item Tax) — matches Saucedemo behavior
+ *   - Math.round(value * 100) / 100 — IEEE 754 floating point fix
+ *   - Epsilon Tolerance 0.02 — handles Banker's Rounding differences
  */
 
-const DEFAULT_TAX_RATE = 0.08;
+const TAX_RATE = 0.08; // Saucedemo charges 8% tax
 
 /**
- * Calculate cart totals from a list of items.
+ * Calculate cart totals from a list of products.
  *
- * @param {Array<{price: number}>} items — products with price field
- * @param {number} [taxRate=0.08] — tax rate as decimal (8% = 0.08)
+ * ★ Subtotal Tax strategy:
+ *   1. Sum all prices → subtotal
+ *   2. Calculate tax on subtotal (not per item)
+ *   3. Round EACH intermediate result to 2 decimal places
+ *
+ * @param {Array<{ price: number }>} products
  * @returns {{ subtotal: number, tax: number, total: number }}
+ * @throws {Error} If products list is empty or contains invalid prices
  */
-function calculateCart(items, taxRate = DEFAULT_TAX_RATE) {
-  if (!Array.isArray(items)) {
-    throw new Error('items must be an array');
+function calculateCart(products) {
+  if (!products || products.length === 0) {
+    throw new Error('Cannot calculate cart: no products provided');
   }
 
-  for (const item of items) {
-    if (typeof item.price !== 'number' || isNaN(item.price) || item.price < 0) {
-      throw new Error(`Invalid item price: ${item.price}`);
+  const subtotal = products.reduce((sum, p) => {
+    if (typeof p.price !== 'number' || isNaN(p.price)) {
+      throw new Error(`Invalid price for product: ${p.title || 'unknown'}`);
     }
-  }
+    return sum + p.price;
+  }, 0);
 
-  const subtotal = items.reduce((sum, item) => sum + item.price, 0);
-  const subtotalRounded = roundTo2(subtotal);
-
-  // Saucedemo rounds tax to 2 decimal places
-  const tax = roundTo2(subtotalRounded * taxRate);
-  const total = roundTo2(subtotalRounded + tax);
-
-  return { subtotal: subtotalRounded, tax, total };
-}
-
-/**
- * Verify DOM values against our calculation.
- *
- * @param {{ subtotal: number, tax: number, total: number }} domValues — parsed from DOM
- * @param {{ subtotal: number, tax: number, total: number }} calculated — our calculation
- * @param {number} [tolerance=0.01] — acceptable rounding difference
- * @returns {{ match: boolean, details: Object }}
- */
-function verifyCart(domValues, calculated, tolerance = 0.01) {
-  const subtotalMatch = Math.abs(domValues.subtotal - calculated.subtotal) <= tolerance;
-  const taxMatch = Math.abs(domValues.tax - calculated.tax) <= tolerance;
-  const totalMatch = Math.abs(domValues.total - calculated.total) <= tolerance;
+  // ★ Floating Point Fix: Math.round(value * 100) / 100
+  // Shifts decimal, rounds to integer (cents), shifts back to dollars
+  const roundedSubtotal = Math.round(subtotal * 100) / 100;
+  const tax = Math.round(roundedSubtotal * TAX_RATE * 100) / 100;
+  const total = Math.round((roundedSubtotal + tax) * 100) / 100;
 
   return {
-    match: subtotalMatch && taxMatch && totalMatch,
-    expected: calculated,
-    actual: domValues,
-    details: {
-      subtotalMatch,
-      taxMatch,
-      totalMatch,
-    },
+    subtotal: roundedSubtotal,
+    tax,
+    total,
   };
 }
 
 /**
- * Round a number to 2 decimal places.
- * @param {number} n
- * @returns {number}
+ * Validate our calculated total vs the DOM total from Saucedemo.
+ *
+ * ★ Why not strict equality (===)?
+ * Different sites use different rounding methods:
+ *   - "Standard Rounding": 0.5 rounds UP
+ *   - "Banker's Rounding": 0.5 rounds to NEAREST EVEN
+ * A 1-cent difference may be valid, but a $2 difference is a bug.
+ *
+ * ★ Epsilon Tolerance = 0.02
+ * Catches real logic errors (tax not calculated) while ignoring
+ * microscopic rounding diffs that are business-acceptable.
+ *
+ * @param {number} calculatedTotal - Our Oracle's result
+ * @param {string} domTotalText - Raw text from DOM (e.g. "Total: $8.63")
+ * @returns {{ match: boolean, calculated: number, fromSite: number }}
  */
-function roundTo2(n) {
-  return Math.round(n * 100) / 100;
+function validateCartTotal(calculatedTotal, domTotalText) {
+  const numericPart = domTotalText.replace(/[^0-9.]/g, '');
+  const fromSite = parseFloat(numericPart);
+
+  return {
+    match: Math.abs(calculatedTotal - fromSite) < 0.02,
+    calculated: calculatedTotal,
+    fromSite,
+  };
 }
 
-module.exports = { calculateCart, verifyCart, roundTo2 };
+module.exports = { calculateCart, validateCartTotal, TAX_RATE };
