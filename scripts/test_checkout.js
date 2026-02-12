@@ -1,5 +1,5 @@
 // scripts/test_checkout.js
-// Test: Full E2E — Login → Search → Select → Cart → Checkout → Screenshot
+// Test: Full E2E with 6 screenshots across the purchase flow
 // Usage: node scripts/test_checkout.js
 
 const { launchBrowser } = require('../src/automation/browser/browserFactory');
@@ -12,9 +12,10 @@ const config = require('../src/automation/config');
 
 (async () => {
   let browser;
+  const allScreenshots = [];
 
   try {
-    console.log('=== FULL E2E TEST ===\n');
+    console.log('=== FULL E2E TEST (with screenshots) ===\n');
 
     console.log('1. Opening browser...');
     const launched = await launchBrowser();
@@ -37,29 +38,37 @@ const config = require('../src/automation/config');
     const chosen = selectProduct(products, 'CHEAPEST');
     console.log(`   Selected: "${chosen.title}" — $${chosen.price}\n`);
 
-    console.log('5. Adding to cart...');
-    const { itemCount } = await addToCart(page, { title: chosen.title });
-    console.log(`   ✅ Cart badge: ${itemCount} item(s)\n`);
+    console.log('5. Adding to cart (📸 x2)...');
+    const cartResult = await addToCart(page, {
+      title: chosen.title,
+      requestId: 'e2e-001',
+    });
+    console.log(`   ✅ Cart badge: ${cartResult.itemCount} item(s)`);
+    allScreenshots.push(...cartResult.screenshots);
 
-    console.log('6. Checkout...');
+    console.log('\n6. Checkout (📸 x4)...');
     const result = await checkout(page, {
       shipping: {
         firstName: 'Test',
         lastName: 'User',
         postalCode: '12345',
       },
-      requestId: 'test-e2e-001',
+      requestId: 'e2e-001',
     });
+    allScreenshots.push(...result.screenshots);
 
-    console.log(`   Status:     ${result.status}`);
-    console.log(`   Confirm:    ${result.confirmText}`);
-    console.log(`   Total:      ${result.totalText}`);
-    console.log(`   Screenshot: ${result.screenshotPath}\n`);
+    console.log(`   Status:  ${result.status}`);
+    console.log(`   Confirm: ${result.confirmText}`);
+    console.log(`   Total:   ${result.totalText}\n`);
+
+    // Show all screenshots
+    console.log(`📸 Screenshots captured (${allScreenshots.length}):`);
+    allScreenshots.forEach((s, i) => console.log(`   ${i + 1}. ${s}`));
 
     const success = result.status === 'completed' && result.confirmText.includes('Thank you');
     console.log(success
-      ? '✅ Step 7 PASSED — Full E2E: Search → Cart → Checkout → Screenshot'
-      : '❌ Step 7 FAILED — Unexpected result'
+      ? '\n✅ Step 7 PASSED — Full E2E with 6 proof screenshots'
+      : '\n❌ Step 7 FAILED — Unexpected result'
     );
 
     if (!success) process.exit(1);
