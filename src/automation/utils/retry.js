@@ -3,13 +3,15 @@
 const config = require('../config');
 
 /**
- * Retry with exponential backoff.
+ * Retry an async function with exponential backoff.
  * Default delays: 500ms → 1000ms → 2000ms
  *
  * @param {Function} fn - Async function to retry
  * @param {Object} opts
- * @param {string} opts.label - Step name for error messages
- * @param {number} [opts.maxAttempts] - Override config default
+ * @param {string} [opts.label] - Step name for error messages
+ * @param {number} [opts.maxAttempts] - Override config default (3)
+ * @returns {Promise<*>} Result of fn()
+ * @throws {Error} After all attempts exhausted
  */
 async function withRetry(fn, { maxAttempts, label } = {}) {
   const max = maxAttempts || config.RETRY_MAX_ATTEMPTS;
