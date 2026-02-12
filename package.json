@@ -1,0 +1,27 @@
+{
+  "name": "ecommerce-automation",
+  "version": "1.0.0",
+  "description": "E2E automation system for e-commerce purchasing flow",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "demo": "node scripts/run_demo.js",
+    "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:watch": "jest --watch"
+  },
+  "keywords": ["automation", "e-commerce", "playwright"],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "playwright": "^1.50.1",
+    "uuid": "^11.1.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
