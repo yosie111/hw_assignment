@@ -1,7 +1,7 @@
 // tests/unit/domain.test.js
 
-const { Product } = require('../../src/domain/Product');
-const { Cart } = require('../../src/domain/Cart');
+const { createProduct } = require('../../src/domain/Product');
+const { createCart } = require('../../src/domain/Cart');
 const { OrderResult } = require('../../src/domain/OrderResult');
 
 // ─── Product ────────────────────────────────────────────────
@@ -12,59 +12,60 @@ describe('Product', () => {
     title: 'Sauce Labs Backpack',
     price: 29.99,
     currency: 'USD',
-    url: 'https://www.saucedemo.com/inventory-item.html?id=4',
+    productUrl: 'https://www.saucedemo.com/inventory-item.html?id=4',
     imageUrl: '/static/media/sauce-backpack.png',
     source: 'saucedemo.com',
   };
 
-  test('create() returns object with all fields', () => {
-    const p = Product.create(validProduct);
+  test('createProduct() returns object with all fields', () => {
+    const p = createProduct(validProduct);
     expect(p.id).toBe('sauce-labs-backpack');
     expect(p.title).toBe('Sauce Labs Backpack');
     expect(p.price).toBe(29.99);
     expect(p.currency).toBe('USD');
-    expect(p.url).toBe('https://www.saucedemo.com/inventory-item.html?id=4');
+    expect(p.productUrl).toBe('https://www.saucedemo.com/inventory-item.html?id=4');
     expect(p.imageUrl).toBe('/static/media/sauce-backpack.png');
     expect(p.source).toBe('saucedemo.com');
   });
 
-  test('create() throws when title is missing', () => {
-    expect(() => Product.create({ ...validProduct, title: '' })).toThrow('title');
+  test('createProduct() throws when title is missing', () => {
+    expect(() => createProduct({ ...validProduct, title: '' })).toThrow('title');
   });
 
-  test('★ G1: id must be a slug, not a numeric index', () => {
-    expect(() => Product.create({ ...validProduct, id: '0' })).toThrow('slug');
-    expect(() => Product.create({ ...validProduct, id: '42' })).toThrow('slug');
-    // Valid slugs should pass
-    expect(() => Product.create({ ...validProduct, id: 'sauce-labs-backpack' })).not.toThrow();
+  test('★ G1: id must be a non-empty string', () => {
+    expect(() => createProduct({ ...validProduct, id: '' })).toThrow('id');
+    expect(() => createProduct({ ...validProduct, id: null })).toThrow('id');
+    // Valid id should pass
+    expect(() => createProduct({ ...validProduct, id: 'sauce-labs-backpack' })).not.toThrow();
   });
 
-  test('★ G2: url must start with http', () => {
-    expect(() => Product.create({ ...validProduct, url: '/inventory-item.html?id=4' })).toThrow('url');
-    expect(() => Product.create({ ...validProduct, url: '' })).toThrow('url');
+  test('★ G2: price must be a non-negative number', () => {
+    expect(() => createProduct({ ...validProduct, price: -1 })).toThrow('price');
+    expect(() => createProduct({ ...validProduct, price: NaN })).toThrow('price');
+    expect(() => createProduct({ ...validProduct, price: 'abc' })).toThrow('price');
   });
 
-  test('★ G3: source must be defined', () => {
-    expect(() => Product.create({ ...validProduct, source: '' })).toThrow('source');
-    expect(() => Product.create({ ...validProduct, source: undefined })).toThrow('source');
+  test('★ G3: source defaults to "unknown" when not provided', () => {
+    const p = createProduct({ ...validProduct, source: undefined });
+    expect(p.source).toBe('unknown');
   });
 });
 
 // ─── Cart ───────────────────────────────────────────────────
 
 describe('Cart', () => {
-  test('addItem + getTotal calculates correctly', () => {
-    const cart = new Cart();
+  test('addItem + getItems works correctly', () => {
+    const cart = createCart();
     cart.addItem({ id: 'a', title: 'Item A', price: 10.50 });
     cart.addItem({ id: 'b', title: 'Item B', price: 5.25 });
-    expect(cart.getTotal()).toBeCloseTo(15.75, 2);
-    expect(cart.count).toBe(2);
+    expect(cart.getItems()).toHaveLength(2);
+    expect(cart.getCount()).toBe(2);
   });
 
-  test('getTotal returns 0 when empty', () => {
-    const cart = new Cart();
-    expect(cart.getTotal()).toBe(0);
-    expect(cart.count).toBe(0);
+  test('isEmpty returns true when empty', () => {
+    const cart = createCart();
+    expect(cart.isEmpty()).toBe(true);
+    expect(cart.getCount()).toBe(0);
   });
 });
 

@@ -76,6 +76,10 @@ function validateCartTotal(calculatedTotal, domTotalText) {
   const numericPart = domTotalText.replace(/[^0-9.]/g, '');
   const fromSite = parseFloat(numericPart);
 
+  if (isNaN(fromSite)) {
+    throw new Error(`Cannot parse total from DOM text: "${domTotalText}"`);
+  }
+
   return {
     match: Math.abs(calculatedTotal - fromSite) < 0.02,
     calculated: calculatedTotal,

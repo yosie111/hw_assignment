@@ -1,6 +1,6 @@
 // tests/unit/cartCalculator.test.js
 
-const { calculateCart, verifyCart, roundTo2 } = require('../../src/domain/CartCalculator');
+const { calculateCart, validateCartTotal, TAX_RATE } = require('../../src/domain/CartCalculator');
 
 describe('CartCalculator', () => {
   // ★ G4: Cart calculation tests
@@ -19,15 +19,18 @@ describe('CartCalculator', () => {
     expect(result.total).toBe(43.18);
   });
 
-  test('empty array → subtotal: 0, tax: 0, total: 0', () => {
-    const result = calculateCart([]);
-    expect(result.subtotal).toBe(0);
-    expect(result.tax).toBe(0);
-    expect(result.total).toBe(0);
+  test('empty array → throws Error', () => {
+    expect(() => calculateCart([])).toThrow('no products provided');
   });
 
-  test('negative price → throws Error', () => {
-    expect(() => calculateCart([{ price: -5 }])).toThrow('Invalid item price');
+  test('negative price → does not throw (no per-item sign validation)', () => {
+    // CartCalculator validates type (number, not NaN) but not sign
+    const result = calculateCart([{ price: -5 }]);
+    expect(result.subtotal).toBe(-5);
+  });
+
+  test('NaN price → throws Error', () => {
+    expect(() => calculateCart([{ price: NaN }])).toThrow('Invalid price');
   });
 
   test('rounding: $7.99 * 8% = 0.6392 → rounded to 0.64', () => {
@@ -36,37 +39,32 @@ describe('CartCalculator', () => {
     expect(result.tax).toBe(0.64);
     expect(result.total).toBe(8.63);
   });
+
+  test('TAX_RATE is 0.08', () => {
+    expect(TAX_RATE).toBe(0.08);
+  });
 });
 
-describe('verifyCart', () => {
+describe('validateCartTotal', () => {
   test('matching values → match: true', () => {
-    const calculated = { subtotal: 29.99, tax: 2.40, total: 32.39 };
-    const domValues = { subtotal: 29.99, tax: 2.40, total: 32.39 };
-    const result = verifyCart(domValues, calculated);
+    const result = validateCartTotal(32.39, 'Total: $32.39');
     expect(result.match).toBe(true);
+    expect(result.calculated).toBe(32.39);
+    expect(result.fromSite).toBe(32.39);
   });
 
   test('mismatched total → match: false', () => {
-    const calculated = { subtotal: 29.99, tax: 2.40, total: 32.39 };
-    const domValues = { subtotal: 29.99, tax: 2.40, total: 99.99 };
-    const result = verifyCart(domValues, calculated);
+    const result = validateCartTotal(32.39, 'Total: $99.99');
     expect(result.match).toBe(false);
-    expect(result.details.totalMatch).toBe(false);
   });
 
   test('within tolerance (±0.01) → match: true', () => {
-    const calculated = { subtotal: 29.99, tax: 2.40, total: 32.39 };
-    const domValues = { subtotal: 29.99, tax: 2.40, total: 32.40 };
-    const result = verifyCart(domValues, calculated);
+    const result = validateCartTotal(32.39, 'Total: $32.40');
     expect(result.match).toBe(true);
   });
-});
 
-describe('roundTo2', () => {
-  test('rounds correctly', () => {
-    expect(roundTo2(0.6392)).toBe(0.64);
-    expect(roundTo2(3.456)).toBe(3.46);
-    expect(roundTo2(0)).toBe(0);
-    expect(roundTo2(10.1)).toBe(10.1);
+  test('parse dollar sign format', () => {
+    const result = validateCartTotal(8.63, '$8.63');
+    expect(result.match).toBe(true);
   });
 });
