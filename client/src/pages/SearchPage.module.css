@@ -1,0 +1,33 @@
+.container {
+  padding: 10px 0;
+}
+.header {
+  margin-bottom: 10px;
+}
+.header h1 {
+  font-size: 1.8rem;
+}
+.subtitle {
+  color: var(--text-light);
+  margin-top: 4px;
+}
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 30px 0;
+}
+.results h2 {
+  margin-bottom: 16px;
+  color: var(--text-light);
+  font-size: 1rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+.empty {
+  padding: 30px 0;
+  color: var(--text-light);
+}

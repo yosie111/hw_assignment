@@ -1,0 +1,25 @@
+.form {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+.input {
+  flex: 1;
+  min-width: 200px;
+}
+.priceInput {
+  width: 140px;
+}
+.btn {
+  padding: 10px 28px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}

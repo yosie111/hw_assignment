@@ -48,8 +48,8 @@ describe('searchService', () => {
 
       expect(products[0].calc).toBeDefined();
       expect(products[0].calc.subtotal).toBe(7.99);
-      expect(products[0].calc.tax).toBe(0.64); // 7.99 * 0.08 = 0.6392 → 0.64
-      expect(products[0].calc.total).toBe(8.63);
+      expect(products[0].calc.tax).toBe(0); // tax = 0%
+      expect(products[0].calc.total).toBe(7.99);
     });
 
     test('preserves original product fields alongside calc', async () => {
@@ -267,10 +267,10 @@ describe('searchService', () => {
 
       const { products } = await executeSearch({ query: '' });
 
-      // 29.99 * 0.08 = 2.3992 → 2.40
+      // tax = 0%
       expect(products[0].calc.subtotal).toBe(29.99);
-      expect(products[0].calc.tax).toBe(2.40);
-      expect(products[0].calc.total).toBe(32.39);
+      expect(products[0].calc.tax).toBe(0);
+      expect(products[0].calc.total).toBe(29.99);
     });
 
     test('calculates correct tax for $49.99 product', async () => {
@@ -278,10 +278,10 @@ describe('searchService', () => {
 
       const { products } = await executeSearch({ query: '' });
 
-      // 49.99 * 0.08 = 3.9992 → 4.00
+      // tax = 0%
       expect(products[0].calc.subtotal).toBe(49.99);
-      expect(products[0].calc.tax).toBe(4.00);
-      expect(products[0].calc.total).toBe(53.99);
+      expect(products[0].calc.tax).toBe(0);
+      expect(products[0].calc.total).toBe(49.99);
     });
 
     test('each product gets independent calc', async () => {

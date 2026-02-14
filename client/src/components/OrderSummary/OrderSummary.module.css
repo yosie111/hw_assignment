@@ -1,0 +1,21 @@
+.container {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 6px var(--shadow);
+  margin: 20px 0;
+}
+.heading {
+  margin-bottom: 12px;
+}
+.section {
+  padding: 10px 0;
+}
+.section + .section {
+  border-top: 1px solid var(--border);
+}
+.section h3 {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  margin-bottom: 4px;
+}

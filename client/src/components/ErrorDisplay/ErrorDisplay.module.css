@@ -1,0 +1,33 @@
+.box {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.title {
+  color: var(--danger);
+  font-size: 1rem;
+}
+.message {
+  margin: 6px 0 0;
+  color: var(--text);
+}
+.details {
+  margin: 10px 0 0 20px;
+  font-size: 0.9rem;
+}
+.details li {
+  margin-bottom: 4px;
+}
+.retryBtn {
+  margin-top: 12px;
+  padding: 8px 20px;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 6px;
+}
+.retryBtn:hover {
+  opacity: 0.9;
+}

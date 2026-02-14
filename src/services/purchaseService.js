@@ -25,8 +25,11 @@
 const { randomUUID } = require('crypto');
 const { purchase } = require('../automation');
 const { createOrder } = require('../domain/Order');
-const { calculateCart, validateCartTotal } = require('../domain/CartCalculator');
+const { calculateCart, validateCartTotal, DEFAULT_TAX_RATE } = require('../domain/CartCalculator');
 const statusStore = require('./statusStore');
+
+// Tax rate — configurable per region. Default: 0%.
+const TAX_RATE = parseFloat(process.env.TAX_RATE) || DEFAULT_TAX_RATE;
 
 /**
  * Start async purchase — returns requestId immediately (202 Accepted).
@@ -91,7 +94,7 @@ async function _runPurchase({ product, shipping, requestId }) {
     // Oracle Validation (Reconciliation Pattern)
     let cartValidation = null;
     try {
-      const calc = calculateCart([product]);
+      const calc = calculateCart([product], { taxRate: TAX_RATE });
       const validation = validateCartTotal(calc.total, result.totalText);
 
       cartValidation = {

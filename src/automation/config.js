@@ -20,6 +20,6 @@ module.exports = {
   // Paths
   SCREENSHOTS_DIR: process.env.SCREENSHOTS_DIR || './screenshots',
 
-  // Tax (Saucedemo uses 8% tax rate)
-  TAX_RATE: 0.08,
+  // Tax (0% — no tax)
+  TAX_RATE: 0,
 };

@@ -1,0 +1,19 @@
+.breakdown {
+  margin: 8px 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+  color: var(--text-light);
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+.total {
+  font-weight: 700;
+  color: var(--text);
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 4px;
+}

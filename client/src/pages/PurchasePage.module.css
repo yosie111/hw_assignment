@@ -1,0 +1,19 @@
+.container {
+  padding: 10px 0;
+}
+.container h1 {
+  margin-bottom: 4px;
+}
+.price {
+  color: var(--text-light);
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+}
+.backBtn {
+  padding: 10px 24px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  margin-top: 12px;
+}

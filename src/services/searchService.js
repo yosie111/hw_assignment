@@ -18,8 +18,11 @@
 const { randomUUID } = require('crypto');
 const { search } = require('../automation');
 const { createProduct } = require('../domain/Product');
-const { calculateCart } = require('../domain/CartCalculator');
+const { calculateCart, DEFAULT_TAX_RATE } = require('../domain/CartCalculator');
 const statusStore = require('./statusStore');
+
+// Tax rate — configurable per region. Default: 0%.
+const TAX_RATE = parseFloat(process.env.TAX_RATE) || DEFAULT_TAX_RATE;
 
 /**
  * Execute search: automation → Domain Gatekeeper → Oracle enrichment.
@@ -51,7 +54,7 @@ async function executeSearch({ query, filters } = {}) {
         const product = createProduct(raw);
 
         // Oracle: calculate tax for this product (for UI display BEFORE purchase)
-        const calc = calculateCart([product]);
+        const calc = calculateCart([product], { taxRate: TAX_RATE });
 
         products.push({
           ...product,
