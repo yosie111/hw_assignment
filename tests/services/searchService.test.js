@@ -292,8 +292,8 @@ describe('searchService', () => {
 
       const { products } = await executeSearch({ query: '' });
 
-      expect(products[0].calc.total).toBe(8.63);
-      expect(products[1].calc.total).toBe(32.39);
+      expect(products[0].calc.total).toBe(7.99);
+      expect(products[1].calc.total).toBe(29.99);
     });
   });
 });

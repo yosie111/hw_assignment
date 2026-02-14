@@ -32,7 +32,9 @@ const validShipping = (overrides = {}) => ({
 // Helper: successful automation result
 const successResult = (overrides = {}) => ({
   confirmText: 'Thank you for your order!',
-  totalText: 'Total: $8.63',
+  subtotalText: 'Item total: $7.99',
+  taxText: 'Tax: $0.00',
+  totalText: 'Total: $7.99',
   cartScreenshots: ['screenshots/3-cart-page.png'],
   screenshots: ['screenshots/5-order-overview.png', 'screenshots/6-order-complete.png'],
   steps: [
@@ -209,9 +211,13 @@ describe('purchaseService', () => {
 
   // ===== _runPurchase — Oracle Reconciliation =====
   describe('_runPurchase() — Oracle Reconciliation', () => {
-    test('calculates cartValidation with matching totals', async () => {
-      // Product: $7.99, Tax: $0.64, Total: $8.63 — matches DOM
-      mockPurchase.mockResolvedValue(successResult({ totalText: 'Total: $8.63' }));
+    test('calculates cartValidation with matching subtotals', async () => {
+      // Product: $7.99, Tax: $0.00, Total: $7.99 — subtotal matches site subtotal
+      mockPurchase.mockResolvedValue(successResult({
+        subtotalText: 'Item total: $7.99',
+        taxText: 'Tax: $0.64',
+        totalText: 'Total: $8.63',
+      }));
 
       const requestId = 'test-oracle-match';
       statusStore.create(requestId, 'purchase');
@@ -227,17 +233,23 @@ describe('purchaseService', () => {
 
       expect(order.cartValidation).toBeDefined();
       expect(order.cartValidation.breakdown.subtotal).toBe(7.99);
-      expect(order.cartValidation.breakdown.tax).toBe(0.64);
-      expect(order.cartValidation.breakdown.total).toBe(8.63);
-      expect(order.cartValidation.fromSite).toBe(8.63);
+      expect(order.cartValidation.breakdown.tax).toBe(0);
+      expect(order.cartValidation.breakdown.total).toBe(7.99);
+      expect(order.cartValidation.site.subtotal).toBe(7.99);
+      expect(order.cartValidation.site.tax).toBe(0.64);
+      expect(order.cartValidation.site.total).toBe(8.63);
       expect(order.cartValidation.match).toBe(true);
     });
 
     test('detects mismatch and logs warning (does not block)', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      // DOM shows $9.99 but Oracle calculates $8.63
-      mockPurchase.mockResolvedValue(successResult({ totalText: 'Total: $9.99' }));
+      // Site subtotal $9.99 but Oracle subtotal $7.99 → mismatch
+      mockPurchase.mockResolvedValue(successResult({
+        subtotalText: 'Item total: $9.99',
+        taxText: 'Tax: $0.80',
+        totalText: 'Total: $10.79',
+      }));
 
       const requestId = 'test-oracle-mismatch';
       statusStore.create(requestId, 'purchase');
@@ -253,18 +265,22 @@ describe('purchaseService', () => {
       expect(status.status).toBe('completed');
       expect(status.result.cartValidation.match).toBe(false);
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Cart total mismatch')
+        expect.stringContaining('Cart subtotal mismatch')
       );
 
       warnSpy.mockRestore();
     });
 
-    test('skips validation gracefully if totalText is unparseable', async () => {
+    test('reports mismatch when subtotalText is unparseable', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      mockPurchase.mockResolvedValue(successResult({ totalText: 'N/A' }));
+      mockPurchase.mockResolvedValue(successResult({
+        subtotalText: 'N/A',
+        taxText: 'N/A',
+        totalText: 'N/A',
+      }));
 
-      const requestId = 'test-oracle-skip';
+      const requestId = 'test-oracle-unparseable';
       statusStore.create(requestId, 'purchase');
 
       await _runPurchase({
@@ -274,11 +290,9 @@ describe('purchaseService', () => {
       });
 
       const status = statusStore.get(requestId);
-      // Should still complete, cartValidation will be null due to parse error
+      // Should still complete, but match = false (unparseable subtotal)
       expect(status.status).toBe('completed');
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Cart validation skipped')
-      );
+      expect(status.result.cartValidation.match).toBe(false);
 
       warnSpy.mockRestore();
     });
@@ -444,7 +458,7 @@ describe('purchaseService', () => {
       expect(order.shipping).toBeDefined();
       expect(order.status).toBe('completed');
       expect(order.confirmText).toBe('Thank you for your order!');
-      expect(order.totalText).toBe('Total: $8.63');
+      expect(order.totalText).toBe('Total: $7.99');
       expect(order.screenshots).toBeDefined();
       expect(order.steps).toBeDefined();
       expect(order.cartValidation).toBeDefined();

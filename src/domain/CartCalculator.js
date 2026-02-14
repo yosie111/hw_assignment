@@ -1,5 +1,5 @@
 // src/domain/cartCalculator.js
-// Oracle Pattern — independent tax calculation (TAX_RATE = 0%)
+// Oracle Pattern — independent tax calculation (default: 0%, configurable via config.js)
 // IEEE 754 fix with Math.round
 // (Built in previous session, this is the interface stub for Services integration)
 

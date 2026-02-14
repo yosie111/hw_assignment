@@ -2,123 +2,127 @@
 
 const { calculateCart, validateCartTotal, DEFAULT_TAX_RATE } = require('../../src/domain/CartCalculator');
 
-console.log('=== Cart Calculator (Oracle) Tests ===\n');
-let passed = 0, failed = 0;
+describe('CartCalculator (Oracle)', () => {
+  test('DEFAULT_TAX_RATE exported = 0', () => {
+    expect(DEFAULT_TAX_RATE).toBe(0);
+  });
 
-function assert(label, condition) {
-  if (condition) { console.log(`  ✅ ${label}`); passed++; }
-  else { console.log(`  ❌ ${label}`); failed++; }
-}
+  // ── Single product: $7.99 (Sauce Labs Onesie) — tax 0% ──
+  test('single product $7.99 with 0% tax', () => {
+    const single = calculateCart([{ title: 'Onesie', price: 7.99 }]);
+    expect(single.subtotal).toBe(7.99);
+    expect(single.tax).toBe(0);
+    expect(single.total).toBe(7.99);
+  });
 
-// ── Tax rate ──
-assert('DEFAULT_TAX_RATE exported = 0', DEFAULT_TAX_RATE === 0);
+  // ── Multiple products: $7.99 + $9.99 = $17.98 ──
+  test('multiple products $7.99 + $9.99', () => {
+    const multi = calculateCart([
+      { title: 'Onesie', price: 7.99 },
+      { title: 'Bike Light', price: 9.99 },
+    ]);
+    expect(multi.subtotal).toBe(17.98);
+    expect(multi.tax).toBe(0);
+    expect(multi.total).toBe(17.98);
+  });
 
-// ── Single product: $7.99 (Sauce Labs Onesie) — tax 0% ──
-const single = calculateCart([{ title: 'Onesie', price: 7.99 }]);
-assert('Single: subtotal = 7.99', single.subtotal === 7.99);
-assert('Single: tax = 0', single.tax === 0);
-assert('Single: total = 7.99', single.total === 7.99);
+  // ── Three products: $7.99 + $9.99 + $29.99 = $47.97 ──
+  test('three products $7.99 + $9.99 + $29.99', () => {
+    const three = calculateCart([
+      { title: 'Onesie', price: 7.99 },
+      { title: 'Bike Light', price: 9.99 },
+      { title: 'Backpack', price: 29.99 },
+    ]);
+    expect(three.subtotal).toBe(47.97);
+    expect(three.tax).toBe(0);
+    expect(three.total).toBe(47.97);
+  });
 
-// ── Multiple products: $7.99 + $9.99 = $17.98 ──
-const multi = calculateCart([
-  { title: 'Onesie', price: 7.99 },
-  { title: 'Bike Light', price: 9.99 },
-]);
-assert('Multi: subtotal = 17.98', multi.subtotal === 17.98);
-assert('Multi: tax = 0', multi.tax === 0);
-assert('Multi: total = 17.98', multi.total === 17.98);
+  // ── Expensive product: $49.99 (Sauce Labs Fleece Jacket) ──
+  test('expensive product $49.99', () => {
+    const expensive = calculateCart([{ title: 'Fleece Jacket', price: 49.99 }]);
+    expect(expensive.subtotal).toBe(49.99);
+    expect(expensive.tax).toBe(0);
+    expect(expensive.total).toBe(49.99);
+  });
 
-// ── Three products: $7.99 + $9.99 + $29.99 = $47.97 ──
-const three = calculateCart([
-  { title: 'Onesie', price: 7.99 },
-  { title: 'Bike Light', price: 9.99 },
-  { title: 'Backpack', price: 29.99 },
-]);
-assert('Three: subtotal = 47.97', three.subtotal === 47.97);
-assert('Three: tax = 0', three.tax === 0);
-assert('Three: total = 47.97', three.total === 47.97);
+  // ── Custom tax rate 8% ──
+  test('custom tax rate 8%: $7.99 → tax 0.64, total 8.63', () => {
+    const result = calculateCart([{ title: 'Onesie', price: 7.99 }], { taxRate: 0.08 });
+    expect(result.subtotal).toBe(7.99);
+    expect(result.tax).toBe(0.64);
+    expect(result.total).toBe(8.63);
+  });
 
-// ── Expensive product: $49.99 (Sauce Labs Fleece Jacket) ──
-const expensive = calculateCart([{ title: 'Fleece Jacket', price: 49.99 }]);
-assert('Expensive: subtotal = 49.99', expensive.subtotal === 49.99);
-assert('Expensive: tax = 0', expensive.tax === 0);
-assert('Expensive: total = 49.99', expensive.total === 49.99);
+  // ── IEEE 754 floating point fix: 0.1 + 0.2 ──
+  test('IEEE 754 floating point fix: 0.1 + 0.2 = 0.3', () => {
+    const tricky = calculateCart([
+      { title: 'A', price: 0.1 },
+      { title: 'B', price: 0.2 },
+    ]);
+    expect(tricky.subtotal).toBe(0.3);
+    expect(tricky.tax).toBe(0);
+    expect(tricky.total).toBe(0.3);
+  });
 
-// ── IEEE 754 floating point fix: 0.1 + 0.2 ──
-const tricky = calculateCart([
-  { title: 'A', price: 0.1 },
-  { title: 'B', price: 0.2 },
-]);
-assert('Floating point fix: subtotal = 0.3 (not 0.30000...04)', tricky.subtotal === 0.3);
-assert('Floating point fix: tax = 0', tricky.tax === 0);
-assert('Floating point fix: total = 0.3', tricky.total === 0.3);
+  // ── Another tricky float: $15.99 + $15.99 ──
+  test('double $15.99 = $31.98', () => {
+    const doubles = calculateCart([
+      { title: 'A', price: 15.99 },
+      { title: 'B', price: 15.99 },
+    ]);
+    expect(doubles.subtotal).toBe(31.98);
+    expect(doubles.tax).toBe(0);
+    expect(doubles.total).toBe(31.98);
+  });
 
-// ── Another tricky float: $15.99 + $15.99 ──
-const doubles = calculateCart([
-  { title: 'A', price: 15.99 },
-  { title: 'B', price: 15.99 },
-]);
-assert('Double $15.99: subtotal = 31.98', doubles.subtotal === 31.98);
-assert('Double $15.99: tax = 0', doubles.tax === 0);
-assert('Double $15.99: total = 31.98', doubles.total === 31.98);
+  // ── Error cases ──
+  test('empty array throws', () => {
+    expect(() => calculateCart([])).toThrow();
+  });
 
-// ── Empty list throws ──
-try {
-  calculateCart([]);
-  assert('Empty list throws', false);
-} catch (e) {
-  assert('Empty list throws', true);
-}
+  test('null throws', () => {
+    expect(() => calculateCart(null)).toThrow();
+  });
+});
 
-// ── Null throws ──
-try {
-  calculateCart(null);
-  assert('Null throws', false);
-} catch (e) {
-  assert('Null throws', true);
-}
+describe('validateCartTotal (Oracle Validation)', () => {
+  test('exact match: $8.63 === "Total: $8.63"', () => {
+    const v = validateCartTotal(8.63, 'Total: $8.63');
+    expect(v.match).toBe(true);
+    expect(v.calculated).toBe(8.63);
+    expect(v.fromSite).toBe(8.63);
+  });
 
-// ════════════════════════════════════════
-// Oracle Validation — validateCartTotal
-// ════════════════════════════════════════
+  test('epsilon tolerance: $8.63 ≈ $8.64 (diff=0.01) → match', () => {
+    expect(validateCartTotal(8.63, 'Total: $8.64').match).toBe(true);
+  });
 
-console.log('\n--- Oracle Validation (validateCartTotal) ---\n');
+  test('epsilon tolerance: $8.64 ≈ $8.63 → match', () => {
+    expect(validateCartTotal(8.64, 'Total: $8.63').match).toBe(true);
+  });
 
-// ── Exact match ──
-const v1 = validateCartTotal(8.63, 'Total: $8.63');
-assert('Exact match: $8.63 === "Total: $8.63"', v1.match === true);
-assert('Exact: calculated = 8.63', v1.calculated === 8.63);
-assert('Exact: fromSite = 8.63', v1.fromSite === 8.63);
+  test('boundary: $8.63 vs $8.65 (diff≈0.02) → match', () => {
+    expect(validateCartTotal(8.63, 'Total: $8.65').match).toBe(true);
+  });
 
-// ── Epsilon tolerance — 1 cent difference (Banker's Rounding) ──
-const v2 = validateCartTotal(8.63, 'Total: $8.64');
-assert('Epsilon: $8.63 ≈ $8.64 (diff=0.01 < 0.02) → match', v2.match === true);
+  test('beyond tolerance: $8.63 vs $8.66 (diff=0.03) → no match', () => {
+    expect(validateCartTotal(8.63, 'Total: $8.66').match).toBe(false);
+  });
 
-// ── Epsilon tolerance — other direction ──
-const v3 = validateCartTotal(8.64, 'Total: $8.63');
-assert('Epsilon: $8.64 ≈ $8.63 (diff=0.01 < 0.02) → match', v3.match === true);
+  test('real mismatch: $8.63 ≠ $10.00 → no match', () => {
+    expect(validateCartTotal(8.63, 'Total: $10.00').match).toBe(false);
+  });
 
-// ── Boundary: ~0.02 diff (floating point: 8.65-8.63 = 0.01999...) → still match ──
-const v4a = validateCartTotal(8.63, 'Total: $8.65');
-assert('Boundary: $8.63 vs $8.65 (diff≈0.02, FP rounds down) → match', v4a.match === true);
+  test('parse "$8.63" → match', () => {
+    expect(validateCartTotal(8.63, '$8.63').match).toBe(true);
+  });
 
-// ── Beyond tolerance: 0.03 diff → NO match ──
-const v4b = validateCartTotal(8.63, 'Total: $8.66');
-assert('Beyond tolerance: $8.63 vs $8.66 (diff=0.03) → no match', v4b.match === false);
+  test('parse "8.63" → match', () => {
+    expect(validateCartTotal(8.63, '8.63').match).toBe(true);
+  });
 
-// ── Real mismatch — bug in site ──
-const v5 = validateCartTotal(8.63, 'Total: $10.00');
-assert('Mismatch: $8.63 ≠ $10.00 → no match', v5.match === false);
-
-// ── Parse various DOM formats ──
-const v7 = validateCartTotal(8.63, '$8.63');
-assert('Parse "$8.63" → match', v7.match === true);
-
-const v8 = validateCartTotal(8.63, '8.63');
-assert('Parse "8.63" → match', v8.match === true);
-
-const v9 = validateCartTotal(51.81, 'Total: $51.81');
-assert('Parse "Total: $51.81" → match', v9.match === true);
-
-console.log(`\n  Results: ${passed} passed, ${failed} failed\n`);
-if (failed > 0) process.exit(1);
+  test('parse "Total: $51.81" → match', () => {
+    expect(validateCartTotal(51.81, 'Total: $51.81').match).toBe(true);
+  });
+});

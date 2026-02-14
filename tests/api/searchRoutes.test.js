@@ -17,7 +17,7 @@ describe('POST /api/search', () => {
     executeSearch.mockResolvedValue({
       requestId: 'req-123',
       products: [
-        { id: '1', title: 'Onesie', price: 7.99, calc: { subtotal: 7.99, tax: 0.64, total: 8.63 } },
+        { id: '1', title: 'Onesie', price: 7.99, calc: { subtotal: 7.99, tax: 0, total: 7.99 } },
       ],
     });
 
@@ -29,7 +29,7 @@ describe('POST /api/search', () => {
     expect(res.body.requestId).toBe('req-123');
     expect(res.body.products).toHaveLength(1);
     expect(res.body.products[0].title).toBe('Onesie');
-    expect(res.body.products[0].calc.total).toBe(8.63);
+    expect(res.body.products[0].calc.total).toBe(7.99);
   });
 
   test('passes query and filters to executeSearch', async () => {
@@ -40,10 +40,12 @@ describe('POST /api/search', () => {
       .send({ query: 'sauce', filters: { maxPrice: 15 } })
       .expect(200);
 
-    expect(executeSearch).toHaveBeenCalledWith({
-      query: 'sauce',
-      filters: { maxPrice: 15 },
-    });
+    expect(executeSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: 'sauce',
+        filters: { maxPrice: 15 },
+      })
+    );
   });
 
   test('applies defaults for empty body', async () => {
@@ -54,10 +56,12 @@ describe('POST /api/search', () => {
       .send({})
       .expect(200);
 
-    expect(executeSearch).toHaveBeenCalledWith({
-      query: '',
-      filters: {},
-    });
+    expect(executeSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: '',
+        filters: {},
+      })
+    );
   });
 
   test('returns 400 for invalid maxPrice', async () => {

@@ -24,7 +24,7 @@ const { purchaseSchema, validate } = require('../middleware/validators');
 router.post('/', validate(purchaseSchema), async (req, res, next) => {
   try {
     const { product, shipping } = req.validated;
-    const { requestId } = await executePurchase({ product, shipping });
+    const { requestId } = await executePurchase({ product, shipping, buyerIp: req.ip });
 
     res.status(202).json({
       requestId,

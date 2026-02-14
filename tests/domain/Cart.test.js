@@ -3,97 +3,109 @@
 const { createCart } = require('../../src/domain/Cart');
 const { createProduct } = require('../../src/domain/Product');
 
-console.log('=== Cart (Aggregate Root) Tests ===\n');
-let passed = 0, failed = 0;
+describe('Cart (Aggregate Root)', () => {
+  const p1 = createProduct({ id: 'onesie', title: 'Sauce Labs Onesie', price: 7.99, source: 'Saucedemo' });
+  const p2 = createProduct({ id: 'bike-light', title: 'Sauce Labs Bike Light', price: 9.99, source: 'Saucedemo' });
+  const p3 = createProduct({ id: 'backpack', title: 'Sauce Labs Backpack', price: 29.99, source: 'Saucedemo' });
 
-function assert(label, condition) {
-  if (condition) { console.log(`  ✅ ${label}`); passed++; }
-  else { console.log(`  ❌ ${label}`); failed++; }
-}
+  test('new cart is empty', () => {
+    const cart = createCart();
+    expect(cart.isEmpty()).toBe(true);
+    expect(cart.getCount()).toBe(0);
+    expect(cart.getItems()).toHaveLength(0);
+  });
 
-const p1 = createProduct({ id: 'onesie', title: 'Sauce Labs Onesie', price: 7.99, source: 'Saucedemo' });
-const p2 = createProduct({ id: 'bike-light', title: 'Sauce Labs Bike Light', price: 9.99, source: 'Saucedemo' });
-const p3 = createProduct({ id: 'backpack', title: 'Sauce Labs Backpack', price: 29.99, source: 'Saucedemo' });
+  test('add items increments count', () => {
+    const cart = createCart();
+    cart.addItem(p1);
+    expect(cart.getCount()).toBe(1);
+    expect(cart.isEmpty()).toBe(false);
 
-// ── New cart is empty ──
-const cart = createCart();
-assert('New cart is empty', cart.isEmpty());
-assert('New cart count = 0', cart.getCount() === 0);
-assert('New cart items = []', cart.getItems().length === 0);
+    cart.addItem(p2);
+    expect(cart.getCount()).toBe(2);
 
-// ── Add items ──
-cart.addItem(p1);
-assert('After add p1: count = 1', cart.getCount() === 1);
-assert('After add p1: not empty', !cart.isEmpty());
+    cart.addItem(p3);
+    expect(cart.getCount()).toBe(3);
+  });
 
-cart.addItem(p2);
-assert('After add p2: count = 2', cart.getCount() === 2);
+  test('items are in correct order', () => {
+    const cart = createCart();
+    cart.addItem(p1);
+    cart.addItem(p2);
+    cart.addItem(p3);
+    const items = cart.getItems();
+    expect(items[0].id).toBe('onesie');
+    expect(items[1].id).toBe('bike-light');
+    expect(items[2].id).toBe('backpack');
+  });
 
-cart.addItem(p3);
-assert('After add p3: count = 3', cart.getCount() === 3);
+  test('duplicate item throws', () => {
+    const cart = createCart();
+    cart.addItem(p1);
+    expect(() => cart.addItem(p1)).toThrow('already in cart');
+    expect(cart.getCount()).toBe(1);
+  });
 
-// ── Items are correct ──
-const items = cart.getItems();
-assert('First item is onesie', items[0].id === 'onesie');
-assert('Second item is bike-light', items[1].id === 'bike-light');
-assert('Third item is backpack', items[2].id === 'backpack');
+  test('getItems returns copy (external mutation protection)', () => {
+    const cart = createCart();
+    cart.addItem(p1);
+    const copy = cart.getItems();
+    copy.push({ id: 'hack', title: 'Hack', price: 0 });
+    expect(cart.getCount()).toBe(1);
 
-// ── Aggregate Root — duplicate guard ──
-try {
-  cart.addItem(p1);
-  assert('Duplicate p1 throws', false);
-} catch (e) {
-  assert('Duplicate p1 throws', e.message.includes('already in cart'));
-}
-assert('Count still 3 after duplicate attempt', cart.getCount() === 3);
+    copy.length = 0;
+    expect(cart.getCount()).toBe(1);
+  });
 
-// ── getItems returns copy (external mutation protection) ──
-const copy = cart.getItems();
-copy.push({ id: 'hack', title: 'Hack', price: 0 });
-assert('getItems returns copy (push does not affect cart)', cart.getCount() === 3);
+  test('remove item', () => {
+    const cart = createCart();
+    cart.addItem(p1);
+    cart.addItem(p2);
+    cart.removeItem('onesie');
+    expect(cart.getCount()).toBe(1);
+    expect(cart.getItems()[0].id).toBe('bike-light');
+  });
 
-copy.length = 0;
-assert('getItems returns copy (clearing array does not affect cart)', cart.getCount() === 3);
+  test('remove non-existent item is no-op', () => {
+    const cart = createCart();
+    cart.addItem(p1);
+    cart.removeItem('non-existent');
+    expect(cart.getCount()).toBe(1);
+  });
 
-// ── Remove item ──
-cart.removeItem('onesie');
-assert('After remove onesie: count = 2', cart.getCount() === 2);
-assert('First item is now bike-light', cart.getItems()[0].id === 'bike-light');
+  test('clear empties the cart', () => {
+    const cart = createCart();
+    cart.addItem(p1);
+    cart.addItem(p2);
+    cart.clear();
+    expect(cart.isEmpty()).toBe(true);
+    expect(cart.getCount()).toBe(0);
+  });
 
-// ── Remove non-existent item (no error, just no-op) ──
-cart.removeItem('non-existent');
-assert('Remove non-existent: count still 2', cart.getCount() === 2);
+  test('can re-add after clear', () => {
+    const cart = createCart();
+    cart.addItem(p1);
+    cart.clear();
+    cart.addItem(p1);
+    expect(cart.getCount()).toBe(1);
+  });
 
-// ── Clear ──
-cart.clear();
-assert('After clear: empty', cart.isEmpty());
-assert('After clear: count = 0', cart.getCount() === 0);
+  test('null product throws', () => {
+    const cart = createCart();
+    expect(() => cart.addItem(null)).toThrow('invalid product');
+  });
 
-// ── Can re-add after clear ──
-cart.addItem(p1);
-assert('Re-add after clear: count = 1', cart.getCount() === 1);
+  test('product without id throws', () => {
+    const cart = createCart();
+    expect(() => cart.addItem({ title: 'No ID', price: 5 })).toThrow('invalid product');
+  });
 
-// ── Invalid product — null ──
-try {
-  cart.addItem(null);
-  assert('Null product throws', false);
-} catch (e) {
-  assert('Null product throws', e.message.includes('invalid product'));
-}
-
-// ── Invalid product — no id ──
-try {
-  cart.addItem({ title: 'No ID', price: 5 });
-  assert('Product without id throws', false);
-} catch (e) {
-  assert('Product without id throws', e.message.includes('invalid product'));
-}
-
-// ── Independent carts ──
-const cart2 = createCart();
-cart2.addItem(p2);
-assert('Cart2 is independent: count = 1', cart2.getCount() === 1);
-assert('Cart1 unchanged: count = 1', cart.getCount() === 1);
-
-console.log(`\n  Results: ${passed} passed, ${failed} failed\n`);
-if (failed > 0) process.exit(1);
+  test('independent carts do not affect each other', () => {
+    const cart1 = createCart();
+    const cart2 = createCart();
+    cart1.addItem(p1);
+    cart2.addItem(p2);
+    expect(cart1.getCount()).toBe(1);
+    expect(cart2.getCount()).toBe(1);
+  });
+});

@@ -43,8 +43,10 @@ async function checkout(page, { shipping, requestId }) {
 
   await page.locator(S.CONTINUE_BUTTON).click();
 
-  // Overview page — capture total before finishing
+  // Overview page — capture subtotal, tax, total before finishing
   await page.locator(S.FINISH_BUTTON).waitFor({ state: 'visible' });
+  const subtotalText = await page.locator(S.SUMMARY_SUBTOTAL).textContent();
+  const taxText = await page.locator(S.SUMMARY_TAX).textContent();
   const totalText = await page.locator(S.SUMMARY_TOTAL).textContent();
 
   // ★ Screenshot 5: Order overview with total
@@ -65,6 +67,8 @@ async function checkout(page, { shipping, requestId }) {
   return {
     status: 'completed',
     confirmText: confirmText.trim(),
+    subtotalText: subtotalText.trim(),
+    taxText: taxText.trim(),
     totalText: totalText.trim(),
     screenshots,
   };

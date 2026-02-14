@@ -21,7 +21,8 @@ async function addToCart(page, { title, requestId = 'run' }) {
   const screenshots = [];
 
   // Click product title to navigate to detail page
-  const productLink = page.locator(`text=${title}`);
+  // Use ITEM_NAME selector to avoid strict mode violation (text= matches description too)
+  const productLink = page.locator(S.ITEM_NAME, { hasText: title });
   await productLink.waitFor({ state: 'visible' });
   await productLink.click();
 

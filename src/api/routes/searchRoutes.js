@@ -22,7 +22,7 @@ const { searchSchema, validate } = require('../middleware/validators');
 router.post('/', validate(searchSchema), async (req, res, next) => {
   try {
     const { query, filters } = req.validated;
-    const result = await executeSearch({ query, filters });
+    const result = await executeSearch({ query, filters, buyerIp: req.ip });
 
     res.json({
       requestId: result.requestId,

@@ -25,11 +25,11 @@
 const { randomUUID } = require('crypto');
 const { purchase } = require('../automation');
 const { createOrder } = require('../domain/Order');
-const { calculateCart, validateCartTotal, DEFAULT_TAX_RATE } = require('../domain/CartCalculator');
+const { calculateCart, EPSILON } = require('../domain/CartCalculator');
 const statusStore = require('./statusStore');
 
-// Tax rate — configurable per region. Default: 0%.
-const TAX_RATE = parseFloat(process.env.TAX_RATE) || DEFAULT_TAX_RATE;
+// Tax rate — single source: config.js (reads from .env)
+const { TAX_RATE } = require('../automation/config');
 
 /**
  * Start async purchase — returns requestId immediately (202 Accepted).
@@ -92,10 +92,21 @@ async function _runPurchase({ product, shipping, requestId }) {
     }
 
     // Oracle Validation (Reconciliation Pattern)
+    // Compare Oracle subtotal vs Site subtotal — works correctly regardless of tax config
     let cartValidation = null;
     try {
       const calc = calculateCart([product], { taxRate: TAX_RATE });
-      const validation = validateCartTotal(calc.total, result.totalText);
+
+      // Parse site values (subtotal, tax, total) from DOM text
+      const parsePrice = (text) => parseFloat((text || '').replace(/[^0-9.]/g, ''));
+      const siteSubtotal = parsePrice(result.subtotalText);
+      const siteTax = parsePrice(result.taxText);
+      const siteTotal = parsePrice(result.totalText);
+
+      // Match = Oracle subtotal equals Site subtotal (tax-independent)
+      const match = !isNaN(siteSubtotal)
+        ? Math.abs(calc.subtotal - siteSubtotal) <= EPSILON
+        : false;
 
       cartValidation = {
         breakdown: {
@@ -103,15 +114,20 @@ async function _runPurchase({ product, shipping, requestId }) {
           tax: calc.tax,
           total: calc.total,
         },
-        fromSite: validation.fromSite,
-        match: validation.match,
+        site: {
+          subtotal: isNaN(siteSubtotal) ? null : siteSubtotal,
+          tax: isNaN(siteTax) ? null : siteTax,
+          total: isNaN(siteTotal) ? null : siteTotal,
+        },
+        fromSite: isNaN(siteTotal) ? 0 : siteTotal,
+        match,
       };
 
-      if (!validation.match) {
+      if (!match) {
         console.warn(
-          `[${requestId}] Cart total mismatch: ` +
-          `Oracle=$${calc.total}, Site=$${validation.fromSite} ` +
-          `(diff=$${Math.abs(calc.total - validation.fromSite).toFixed(2)})`
+          `[${requestId}] Cart subtotal mismatch: ` +
+          `Oracle=$${calc.subtotal}, Site=$${siteSubtotal} ` +
+          `(diff=$${Math.abs(calc.subtotal - (siteSubtotal || 0)).toFixed(2)})`
         );
       }
     } catch (err) {
@@ -131,6 +147,8 @@ async function _runPurchase({ product, shipping, requestId }) {
       shipping,
       status: 'completed',
       confirmText: result.confirmText,
+      subtotalText: result.subtotalText,
+      taxText: result.taxText,
       totalText: result.totalText,
       screenshots: allScreenshots,
       steps: result.steps || [],

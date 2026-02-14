@@ -31,6 +31,8 @@ module.exports = {
   CONTINUE_BUTTON:    '[data-test="continue"]',
 
   // Checkout - Step 2 (Overview)
+  SUMMARY_SUBTOTAL:   '[data-test="subtotal-label"]',
+  SUMMARY_TAX:        '[data-test="tax-label"]',
   SUMMARY_TOTAL:      '[data-test="total-label"]',
   FINISH_BUTTON:      '[data-test="finish"]',
 

@@ -20,6 +20,6 @@ module.exports = {
   // Paths
   SCREENSHOTS_DIR: process.env.SCREENSHOTS_DIR || './screenshots',
 
-  // Tax (0% — no tax)
-  TAX_RATE: 0,
+  // Tax — default 0%. Override via .env (e.g. TAX_RATE=0.08 for 8%)
+  TAX_RATE: parseFloat(process.env.TAX_RATE) || 0,
 };

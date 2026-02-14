@@ -66,3 +66,8 @@
   color: #7d5a1a;
   border: 1px solid var(--warning);
 }
+.taxInfo {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--text-light);
+}

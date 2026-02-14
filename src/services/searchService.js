@@ -18,11 +18,11 @@
 const { randomUUID } = require('crypto');
 const { search } = require('../automation');
 const { createProduct } = require('../domain/Product');
-const { calculateCart, DEFAULT_TAX_RATE } = require('../domain/CartCalculator');
+const { calculateCart } = require('../domain/CartCalculator');
 const statusStore = require('./statusStore');
 
-// Tax rate — configurable per region. Default: 0%.
-const TAX_RATE = parseFloat(process.env.TAX_RATE) || DEFAULT_TAX_RATE;
+// Tax rate — single source: config.js (reads from .env)
+const { TAX_RATE } = require('../automation/config');
 
 /**
  * Execute search: automation → Domain Gatekeeper → Oracle enrichment.
