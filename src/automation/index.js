@@ -1,6 +1,8 @@
 // src/automation/index.js
 // ★ Public API — only these two functions are exposed to the Services layer.
+// Now supports modular architecture with multiple platforms
 
+// Legacy imports (for backward compatibility)
 const { launchBrowser } = require('./browser/browserFactory');
 const { login } = require('./sites/saucedemo/flows/loginFlow');
 const { searchProducts } = require('./sites/saucedemo/flows/searchFlow');
@@ -11,6 +13,15 @@ const { createStepLogger } = require('./utils/stepLogger');
 const { validateSearchInput, validatePurchaseInput } = require('./utils/inputValidator');
 const { takeScreenshot } = require('./utils/screenshot');
 const config = require('./config');
+
+// New modular architecture
+const { registry } = require('./core/automation-registry');
+const { SaucedemoProvider } = require('./providers/saucedemo/saucedemo-provider');
+const { AmazonProvider } = require('./providers/amazon/amazon-provider');
+
+// Register available platforms
+registry.register('saucedemo', SaucedemoProvider);
+registry.register('amazon', AmazonProvider);
 
 /**
  * Search flow: validate → open browser → login → search → scrape → return products
@@ -126,4 +137,13 @@ async function purchase({ productTitle, shipping, requestId, onStep }) {
   }
 }
 
-module.exports = { search, purchase };
+module.exports = { 
+  // Legacy API (backward compatible)
+  search, 
+  purchase,
+  
+  // New modular architecture API
+  registry,
+  SaucedemoProvider,
+  AmazonProvider,
+};
