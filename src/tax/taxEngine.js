@@ -44,7 +44,7 @@ function resolve({
   //   regardless of where the buyer is located.
   //   → Always use the seller's policy.
   const isDomestic = buyer === seller;
-  const policyKey = seller;
+  const policyKey = isDomestic ? seller : buyer;
   const policy = policies[policyKey] || policies.DEFAULT;
 
   // Step 3: Calculate rate based on policy type

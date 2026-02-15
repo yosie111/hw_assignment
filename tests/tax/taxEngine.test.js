@@ -17,36 +17,36 @@ describe('TaxEngine', () => {
   });
 
   // ═══════════════════════════════════════
-  // Seller-side tax: Oracle matches what the SITE charges
+  // Buyer-side tax: import uses buyer's policy
   // ═══════════════════════════════════════
-  describe('seller-side tax (always uses seller policy)', () => {
-    test('IL buyer + US seller → US 8% (not IL threshold)', () => {
+  describe('buyer-side tax (import uses buyer policy)', () => {
+    test('IL buyer + US seller → IL threshold (below 150 → 0%)', () => {
       const result = resolve({ buyerCountry: 'IL', sellerCountry: 'US', subtotal: 29.99 });
 
-      expect(result.taxRate).toBe(0.08);
-      expect(result.taxAmount).toBe(2.40);
-      expect(result.rule).toBe('US_IMPORT_FLAT');
-      expect(result.label).toBe('US Sales Tax (8%)');
+      expect(result.taxRate).toBe(0);
+      expect(result.taxAmount).toBe(0);
+      expect(result.rule).toBe('IL_IMPORT_BELOW_THRESHOLD');
+      expect(result.label).toBe('Israel VAT (18%)');
       expect(result.buyerCountry).toBe('IL');
       expect(result.sellerCountry).toBe('US');
     });
 
-    test('unknown buyer + US seller → US 8% (not DEFAULT 0%)', () => {
+    test('unknown buyer + US seller → DEFAULT 0%', () => {
       const result = resolve({ buyerCountry: 'XX', sellerCountry: 'US', subtotal: 50 });
 
-      expect(result.taxRate).toBe(0.08);
-      expect(result.taxAmount).toBe(4);
-      expect(result.rule).toBe('US_IMPORT_FLAT');
-      expect(result.label).toBe('US Sales Tax (8%)');
+      expect(result.taxRate).toBe(0);
+      expect(result.taxAmount).toBe(0);
+      expect(result.rule).toBe('XX_IMPORT_FLAT');
+      expect(result.label).toBe('No Tax');
     });
 
-    test('GB buyer + US seller → US 8% (not UK 20%)', () => {
+    test('GB buyer + US seller → GB 20%', () => {
       const result = resolve({ buyerCountry: 'GB', sellerCountry: 'US', subtotal: 50 });
 
-      expect(result.taxRate).toBe(0.08);
-      expect(result.taxAmount).toBe(4);
-      expect(result.rule).toBe('US_IMPORT_FLAT');
-      expect(result.label).toBe('US Sales Tax (8%)');
+      expect(result.taxRate).toBe(0.20);
+      expect(result.taxAmount).toBe(10);
+      expect(result.rule).toBe('GB_IMPORT_FLAT');
+      expect(result.label).toBe('UK VAT (20%)');
     });
   });
 
@@ -100,10 +100,10 @@ describe('TaxEngine', () => {
       expect(result.sellerCountry).toBe('US');
     });
 
-    test('no params at all → US seller policy (8%)', () => {
+    test('no params at all → IL buyer policy (below threshold → 0%)', () => {
       const result = resolve();
 
-      expect(result.taxRate).toBe(0.08);
+      expect(result.taxRate).toBe(0);
       expect(result.taxAmount).toBe(0);
     });
   });
@@ -112,31 +112,31 @@ describe('TaxEngine', () => {
   // Non-US seller scenarios
   // ═══════════════════════════════════════
   describe('non-US seller', () => {
-    test('US buyer + GB seller → GB 20%', () => {
+    test('US buyer + GB seller → US 8%', () => {
       const result = resolve({ buyerCountry: 'US', sellerCountry: 'GB', subtotal: 50 });
 
-      expect(result.taxRate).toBe(0.20);
-      expect(result.taxAmount).toBe(10);
-      expect(result.rule).toBe('GB_IMPORT_FLAT');
-      expect(result.label).toBe('UK VAT (20%)');
+      expect(result.taxRate).toBe(0.08);
+      expect(result.taxAmount).toBe(4);
+      expect(result.rule).toBe('US_IMPORT_FLAT');
+      expect(result.label).toBe('US Sales Tax (8%)');
     });
 
-    test('IL buyer + DE seller → DE 19%', () => {
+    test('IL buyer + DE seller → IL threshold (below 150 → 0%)', () => {
       const result = resolve({ buyerCountry: 'IL', sellerCountry: 'DE', subtotal: 100 });
-
-      expect(result.taxRate).toBe(0.19);
-      expect(result.taxAmount).toBe(19);
-      expect(result.rule).toBe('DE_IMPORT_FLAT');
-      expect(result.label).toBe('Germany VAT (19%)');
-    });
-
-    test('unknown seller → DEFAULT 0%', () => {
-      const result = resolve({ buyerCountry: 'US', sellerCountry: 'XX', subtotal: 50 });
 
       expect(result.taxRate).toBe(0);
       expect(result.taxAmount).toBe(0);
-      expect(result.rule).toBe('XX_IMPORT_FLAT');
-      expect(result.label).toBe('No Tax');
+      expect(result.rule).toBe('IL_IMPORT_BELOW_THRESHOLD');
+      expect(result.label).toBe('Israel VAT (18%)');
+    });
+
+    test('unknown seller + US buyer → US 8%', () => {
+      const result = resolve({ buyerCountry: 'US', sellerCountry: 'XX', subtotal: 50 });
+
+      expect(result.taxRate).toBe(0.08);
+      expect(result.taxAmount).toBe(4);
+      expect(result.rule).toBe('US_IMPORT_FLAT');
+      expect(result.label).toBe('US Sales Tax (8%)');
     });
   });
 
