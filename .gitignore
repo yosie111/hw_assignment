@@ -5,3 +5,4 @@ logs/
 *.log
 client/node_modules/
 client/dist/
+client/build/

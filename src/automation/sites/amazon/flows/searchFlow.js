@@ -15,7 +15,9 @@ const { parseProduct } = require('../parsers/productParser');
 async function searchProducts(page, { query, filters }) {
   // Navigate to homepage if not already there
   const currentUrl = page.url();
-  if (!currentUrl.includes('amazon.com')) {
+  const url = new URL(currentUrl);
+  // Only allow amazon.com and its subdomains (e.g., www.amazon.com)
+  if (!(url.hostname === 'amazon.com' || url.hostname.endsWith('.amazon.com'))) {
     await page.goto('https://www.amazon.com', { waitUntil: 'domcontentloaded' });
   }
 
