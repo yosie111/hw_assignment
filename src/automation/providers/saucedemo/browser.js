@@ -8,8 +8,8 @@ const config = require('./config');
  * Create a browser manager instance for Saucedemo
  * @returns {BrowserManager}
  */
-function createSaucedemosBrowser() {
+function createSaucedemoBrowser() {
   return new BrowserManager(config.browser);
 }
 
-module.exports = { createSaucedemosBrowser };
+module.exports = { createSaucedemoBrowser };
