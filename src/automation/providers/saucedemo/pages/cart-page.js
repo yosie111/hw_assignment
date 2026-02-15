@@ -2,7 +2,6 @@
 
 const { SELECTORS } = require('../config');
 const { withRetry } = require('../../../utils/retry');
-const { takeScreenshot } = require('../../../utils/screenshot');
 
 /**
  * CartPage - Page Object for Saucedemo cart operations
