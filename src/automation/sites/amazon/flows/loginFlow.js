@@ -34,8 +34,22 @@ async function login(page, { username, password, baseUrl }) {
     await emailInput.fill(username);
     await page.locator(S.CONTINUE_BUTTON).click();
   } catch (error) {
-    // May already be past email step
+    // May already be past email step - verify we're at password step or logged in
     console.log('Email input not found, may be at password step or already logged in');
+    
+    // Check if we're at password step
+    const isPasswordVisible = await page.locator(S.PASSWORD_INPUT).isVisible().catch(() => false);
+    // Check if already logged in
+    const isLoggedIn = await page.locator(S.CART_LINK).isVisible().catch(() => false);
+    
+    if (!isPasswordVisible && !isLoggedIn) {
+      throw new Error('Login failed: Email input not found and not at password step');
+    }
+    
+    if (isLoggedIn) {
+      console.log('Already logged in');
+      return;
+    }
   }
 
   // Fill password and sign in
