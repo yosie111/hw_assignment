@@ -38,7 +38,7 @@ describe('Zod Schemas', () => {
     test('accepts empty body (all defaults)', () => {
       const result = searchSchema.safeParse({});
       expect(result.success).toBe(true);
-      expect(result.data).toEqual({ query: '', filters: {} });
+      expect(result.data).toEqual({ site: 'saucedemo', query: '', filters: {} });
     });
   });
 

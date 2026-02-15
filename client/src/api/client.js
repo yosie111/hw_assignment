@@ -63,21 +63,21 @@ export class NetworkError extends Error {
 
 /**
  * POST /api/search
- * @param {{ query?: string, filters?: { maxPrice?: number } }} params
+ * @param {{ site?: string, query?: string, filters?: { maxPrice?: number } }} params
  * @returns {Promise<{ requestId: string, products: Array }>}
  */
-export const searchProducts = async ({ query = '', filters = {} } = {}) => {
-  const response = await apiClient.post('/search', { query, filters });
+export const searchProducts = async ({ site = 'saucedemo', query = '', filters = {} } = {}) => {
+  const response = await apiClient.post('/search', { site, query, filters });
   return response.data;
 };
 
 /**
  * POST /api/purchase (Fire-and-Forget → 202)
- * @param {{ product: Object, shipping: Object }} params
+ * @param {{ site?: string, product: Object, shipping: Object }} params
  * @returns {Promise<{ requestId: string, message: string, statusUrl: string }>}
  */
-export const purchaseProduct = async ({ product, shipping }) => {
-  const response = await apiClient.post('/purchase', { product, shipping });
+export const purchaseProduct = async ({ site = 'saucedemo', product, shipping }) => {
+  const response = await apiClient.post('/purchase', { site, product, shipping });
   return response.data;
 };
 

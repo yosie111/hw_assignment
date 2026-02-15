@@ -13,7 +13,7 @@ const { searchSchema, validate } = require('../middleware/validators');
 /**
  * POST /api/search
  *
- * Body: { query: string, filters?: { maxPrice?: number } }
+ * Body: { site?: string, query: string, filters?: { maxPrice?: number } }
  *
  * Response 200: { requestId, products: [{ id, title, price, ..., calc }] }
  * Response 400: { error: "Validation failed", details: [...] }
@@ -21,8 +21,8 @@ const { searchSchema, validate } = require('../middleware/validators');
  */
 router.post('/', validate(searchSchema), async (req, res, next) => {
   try {
-    const { query, filters } = req.validated;
-    const result = await executeSearch({ query, filters, buyerIp: req.ip });
+    const { site, query, filters } = req.validated;
+    const result = await executeSearch({ site, query, filters, buyerIp: req.ip });
 
     res.json({
       requestId: result.requestId,

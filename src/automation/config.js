@@ -3,10 +3,20 @@
 require('dotenv').config();
 
 module.exports = {
-  // Site
-  BASE_URL: process.env.BASE_URL || 'https://www.saucedemo.com',
-  USERNAME: process.env.SITE_USERNAME || 'standard_user',
-  PASSWORD: process.env.SITE_PASSWORD || 'secret_sauce',
+  // Saucedemo Site
+  SAUCEDEMO_BASE_URL: process.env.SAUCEDEMO_BASE_URL || 'https://www.saucedemo.com',
+  SAUCEDEMO_USERNAME: process.env.SAUCEDEMO_USERNAME || 'standard_user',
+  SAUCEDEMO_PASSWORD: process.env.SAUCEDEMO_PASSWORD || 'secret_sauce',
+
+  // Amazon Site
+  AMAZON_BASE_URL: process.env.AMAZON_BASE_URL || 'https://www.amazon.com',
+  AMAZON_USERNAME: process.env.AMAZON_USERNAME || '',
+  AMAZON_PASSWORD: process.env.AMAZON_PASSWORD || '',
+
+  // Legacy/backward compatibility (defaults to Saucedemo)
+  BASE_URL: process.env.BASE_URL || process.env.SAUCEDEMO_BASE_URL || 'https://www.saucedemo.com',
+  USERNAME: process.env.SITE_USERNAME || process.env.SAUCEDEMO_USERNAME || 'standard_user',
+  PASSWORD: process.env.SITE_PASSWORD || process.env.SAUCEDEMO_PASSWORD || 'secret_sauce',
 
   // Browser
   HEADLESS: process.env.HEADLESS !== 'false',         // default: true

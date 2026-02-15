@@ -14,7 +14,7 @@ const POLL_INTERVAL = 2000;
 export default function PurchasePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { product } = location.state || {};
+  const { product, site = 'saucedemo' } = location.state || {};
 
   const [requestId, setRequestId] = useState(null);
   const [status, setStatus] = useState(null);
@@ -51,7 +51,7 @@ export default function PurchasePage() {
     setIsInitiating(true);
     setError(null);
     try {
-      const data = await purchaseProduct({ product, shipping });
+      const data = await purchaseProduct({ site, product, shipping });
       setRequestId(data.requestId);
       setShouldPoll(true);
     } catch (err) {

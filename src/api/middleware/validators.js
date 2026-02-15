@@ -12,6 +12,7 @@ const { z } = require('zod');
 
 // ─── Search Schema ───
 const searchSchema = z.object({
+  site: z.enum(['saucedemo', 'amazon']).default('saucedemo'),
   query: z.string().default(''),
   filters: z.object({
     maxPrice: z.number().positive().optional(),
@@ -20,6 +21,7 @@ const searchSchema = z.object({
 
 // ─── Purchase Schema ───
 const purchaseSchema = z.object({
+  site: z.enum(['saucedemo', 'amazon']).default('saucedemo'),
   product: z.object({
     id: z.string().min(1, 'Product ID is required'),
     title: z.string().min(1, 'Product title is required'),

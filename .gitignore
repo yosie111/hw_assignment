@@ -5,3 +5,13 @@ logs/
 *.log
 client/node_modules/
 client/dist/
+client/build/
+
+# IDE
+.idea/
+# Claude
+.claude/
+# Python cache
+.pytest_cache/
+__pycache__/
+

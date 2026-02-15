@@ -28,18 +28,20 @@ const { TAX_RATE } = require('../automation/config');
  * Execute search: automation → Domain Gatekeeper → Oracle enrichment.
  *
  * @param {Object} params
+ * @param {string} [params.site='saucedemo'] - Site to search ('saucedemo' or 'amazon')
  * @param {string} [params.query] - search query (empty = all products)
  * @param {Object} [params.filters] - { maxPrice, minPrice, ... }
  * @returns {Promise<{ requestId: string, products: Object[] }>}
  * @throws {Error} if automation crashes (statusStore also marked as failed)
  */
-async function executeSearch({ query, filters } = {}) {
+async function executeSearch({ site = 'saucedemo', query, filters } = {}) {
   const requestId = randomUUID();
   statusStore.create(requestId, 'search');
 
   try {
     // Automation call — returns raw product objects from DOM scraping
     const rawProducts = await search({
+      site,
       query: query || '',
       filters: filters || {},
       requestId,
