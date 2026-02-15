@@ -2,7 +2,7 @@
 // Test: Full E2E with 6 screenshots across the purchase flow
 // Usage: node scripts/test_checkout.js
 
-const { launchBrowser } = require('../src/automation/browser/browserFactory');
+const { launchBrowser } = require('../src/automation/browser/factory');
 const { login } = require('../src/automation/sites/saucedemo/flows/loginFlow');
 const { searchProducts } = require('../src/automation/sites/saucedemo/flows/searchFlow');
 const { addToCart } = require('../src/automation/sites/saucedemo/flows/cartFlow');

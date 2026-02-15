@@ -6,7 +6,7 @@
 //   node scripts/test_search.js --max-price 15         (filter by price)
 //   node scripts/test_search.js --query shirt --max-price 20
 
-const { launchBrowser } = require('../src/automation/browser/browserFactory');
+const { launchBrowser } = require('../src/automation/browser/factory');
 const { login } = require('../src/automation/sites/saucedemo/flows/loginFlow');
 const { searchProducts } = require('../src/automation/sites/saucedemo/flows/searchFlow');
 const config = require('../src/automation/config');

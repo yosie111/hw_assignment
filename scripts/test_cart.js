@@ -2,7 +2,7 @@
 // Test: Login → Search → Select product → Add to Cart → Verify badge
 // Usage: node scripts/test_cart.js
 
-const { launchBrowser } = require('../src/automation/browser/browserFactory');
+const { launchBrowser } = require('../src/automation/browser/factory');
 const { login } = require('../src/automation/sites/saucedemo/flows/loginFlow');
 const { searchProducts } = require('../src/automation/sites/saucedemo/flows/searchFlow');
 const { addToCart } = require('../src/automation/sites/saucedemo/flows/cartFlow');

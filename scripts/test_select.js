@@ -3,7 +3,7 @@
 // Usage: node scripts/test_select.js
 
 const { selectProduct } = require('../src/automation/policies/selectProduct');
-const { launchBrowser } = require('../src/automation/browser/browserFactory');
+const { launchBrowser } = require('../src/automation/browser/factory');
 const { login } = require('../src/automation/sites/saucedemo/flows/loginFlow');
 const { searchProducts } = require('../src/automation/sites/saucedemo/flows/searchFlow');
 const config = require('../src/automation/config');

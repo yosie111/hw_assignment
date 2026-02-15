@@ -4,7 +4,7 @@
 //   node scripts/test_login.js              (Chromium - default)
 //   node scripts/test_login.js --firefox    (Firefox)
 
-const { launchBrowser, launchFirefox } = require('../src/automation/browser/browserFactory');
+const { launchBrowser, launchFirefox } = require('../src/automation/browser/factory');
 const { login } = require('../src/automation/sites/saucedemo/flows/loginFlow');
 const config = require('../src/automation/config');
 
