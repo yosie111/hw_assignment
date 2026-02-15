@@ -7,6 +7,9 @@ client/node_modules/
 client/dist/
 client/build/
 
+# Test results
+test-results/
+
 # IDE
 .idea/
 # Claude
