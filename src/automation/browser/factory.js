@@ -1,30 +1,39 @@
-'use strict';
+// src/automation/browser/factory.js
 
-const { setTimeout } = require('timers/promises');
-const chromium = require('playwright').chromium;
-const firefox = require('playwright').firefox;
+const { chromium, firefox } = require('playwright');
 
-const DEFAULT_TIMEOUT = 30000; // 30 seconds
-const VIEWPORT = { width: 1280, height: 720 };
-
-async function launchBrowser(browserType) {
-    let browser;
-    if (browserType === 'chromium') {
-        browser = await chromium.launch();
-    } else if (browserType === 'firefox') {
-        browser = await firefox.launch();
-    }
-    return browser;
-}
-
-async function createBrowserContext(browser, options = {}) {
-    const contextOptions = {
-        ...options,
-        viewport: VIEWPORT,
-        ignoreDefaultArgs: ['--disable-extensions'],
-    };
-    const context = await browser.newContext(contextOptions);
-    return context;
-}
-
-module.exports = { launchBrowser, createBrowserContext };
+const DEFAULT_TIMEOUT = 30000;
+const DEFAULT_VIEWPORT = { width: 1280, height: 720 };\n
+/**
+ * Launch a Chromium browser instance.
+ * @returns {Promise<Object>} browser instance with context and page
+ */
+async function launchBrowser(config = {}) {
+  const browser = await chromium.launch({
+    headless: config.headless !== false,
+  });\n
+  const context = await browser.newContext({
+    viewport: DEFAULT_VIEWPORT,
+  });\n
+  const page = await context.newPage();
+  page.setDefaultTimeout(config.timeout || DEFAULT_TIMEOUT);
+  page.setDefaultNavigationTimeout(config.navigationTimeout || 35000);\n
+  return { browser, context, page };
+} \n
+/**
+ * Launch a Firefox browser instance.
+ * @returns {Promise<Object>} browser instance with context and page
+ */
+async function launchFirefox(config = {}) {
+  const browser = await firefox.launch({
+    headless: config.headless !== false,
+  });\n
+  const context = await browser.newContext({
+    viewport: DEFAULT_VIEWPORT,
+  });\n
+  const page = await context.newPage();
+  page.setDefaultTimeout(config.timeout || DEFAULT_TIMEOUT);
+  page.setDefaultNavigationTimeout(config.navigationTimeout || 35000);\n
+  return { browser, context, page };
+} \n
+module.exports = { launchBrowser, launchFirefox };
