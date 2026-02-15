@@ -13,6 +13,7 @@ const { purchaseSchema, validate } = require('../middleware/validators');
  * POST /api/purchase
  *
  * Body: {
+ *   site?: string,
  *   product: { id, title, price, currency, source },
  *   shipping: { firstName, lastName, postalCode }
  * }
@@ -23,8 +24,8 @@ const { purchaseSchema, validate } = require('../middleware/validators');
  */
 router.post('/', validate(purchaseSchema), async (req, res, next) => {
   try {
-    const { product, shipping } = req.validated;
-    const { requestId } = await executePurchase({ product, shipping, buyerIp: req.ip });
+    const { site, product, shipping } = req.validated;
+    const { requestId } = await executePurchase({ site, product, shipping, buyerIp: req.ip });
 
     res.status(202).json({
       requestId,

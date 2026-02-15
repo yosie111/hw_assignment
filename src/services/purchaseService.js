@@ -35,12 +35,13 @@ const { TAX_RATE } = require('../automation/config');
  * Start async purchase — returns requestId immediately (202 Accepted).
  *
  * @param {Object} params
+ * @param {string} [params.site='saucedemo'] - Site to purchase from ('saucedemo' or 'amazon')
  * @param {Object} params.product - frozen Product (must have .title and .price)
  * @param {Object} params.shipping - { firstName, lastName, postalCode }
  * @returns {{ requestId: string }}
  * @throws {Error} if product or shipping invalid (Fail Fast)
  */
-async function executePurchase({ product, shipping }) {
+async function executePurchase({ site = 'saucedemo', product, shipping }) {
   // Fail Fast — validate before spending resources
   if (!product || !product.title) {
     throw new Error('Valid product with title is required for purchase');
@@ -53,7 +54,7 @@ async function executePurchase({ product, shipping }) {
   statusStore.create(requestId, 'purchase');
 
   // Fire and Forget — return requestId immediately
-  _runPurchase({ product, shipping, requestId }).catch((err) => {
+  _runPurchase({ site, product, shipping, requestId }).catch((err) => {
     console.error(`[${requestId}] Unhandled purchase error:`, err.message);
   });
 
@@ -65,10 +66,11 @@ async function executePurchase({ product, shipping }) {
  * UI polls GET /api/status/:requestId to track progress.
  * @private
  */
-async function _runPurchase({ product, shipping, requestId }) {
+async function _runPurchase({ site, product, shipping, requestId }) {
   try {
     // Automation — browser does the actual purchase
     const result = await purchase({
+      site,
       productTitle: product.title,
       shipping,
       requestId,
