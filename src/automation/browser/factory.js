@@ -1,4 +1,4 @@
-// src/automation/browser/browserFactory.js
+// src/automation/browser/factory.js
 
 const { chromium, firefox } = require('playwright');
 const config = require('../config');
