@@ -1,7 +1,7 @@
 // src/automation/sites/amazon/flows/loginFlow.js
 
 const S = require('../selectors');
-const config = require('../../config');
+const config = require('../../../config');
 
 /**
  * Amazon login flow: Navigate → Sign In → Fill credentials → Validate success
