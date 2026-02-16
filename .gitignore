@@ -15,3 +15,8 @@ client/build/
 .pytest_cache/
 __pycache__/
 
+
+# Playwright artifacts
+test-results/
+playwright-report/
+
