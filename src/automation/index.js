@@ -71,7 +71,9 @@ async function search({ site = 'saucedemo', query, filters, requestId, onStep })
   let browser;
 
   try {
-    const launched = await logger.runStep('OpenBrowser', () => launchBrowser());
+    const launched = await logger.runStep('OpenBrowser', () =>
+      launchBrowser({ useAmazonSession: site === 'amazon' })
+    );
     browser = launched.browser;
     const page = launched.page;
 
@@ -117,7 +119,9 @@ async function purchase({ site = 'saucedemo', productTitle, shipping, requestId,
   let lastStep = 'Init';
 
   try {
-    const launched = await logger.runStep('OpenBrowser', () => launchBrowser());
+    const launched = await logger.runStep('OpenBrowser', () =>
+      launchBrowser({ useAmazonSession: site === 'amazon' })
+    );
     browser = launched.browser;
     page = launched.page;
 

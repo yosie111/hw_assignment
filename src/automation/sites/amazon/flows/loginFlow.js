@@ -5,8 +5,9 @@ const config = require('../../../config');
 
 /**
  * Amazon login flow: Navigate → Sign In → Fill credentials → Validate success
- * 
- * Note: Amazon may show captcha or 2FA challenges which this automation
+ *
+ * Supports saved session cookies — if already logged in, skips login flow.
+ * Amazon may show captcha or 2FA challenges which this automation
  * cannot handle. For testing purposes, use a test account without 2FA.
  *
  * @param {import('playwright').Page} page
@@ -20,11 +21,18 @@ async function login(page, { username, password, baseUrl }) {
     timeout: 30_000,
   });
 
+  // Check if already logged in (from saved session)
+  await page.waitForTimeout(2000);
+  const alreadyLoggedIn = await page.locator(S.CART_LINK).isVisible().catch(() => false);
+  if (alreadyLoggedIn) {
+    console.log('Already logged in via saved session');
+    return;
+  }
+
   // Click on "Sign in" link
   try {
     await page.locator(S.SIGN_IN_LINK).click({ timeout: config.DEFAULT_TIMEOUT });
   } catch (error) {
-    // May already be on login page or signed in
     console.log('Sign in link not found, may already be on login page');
   }
 
@@ -35,7 +43,6 @@ async function login(page, { username, password, baseUrl }) {
     await emailInput.fill(username);
     await page.locator(S.CONTINUE_BUTTON).click();
   } catch (error) {
-    // May already be past email step
     console.log('Email input not found, may be at password step or already logged in');
   }
 
@@ -46,7 +53,6 @@ async function login(page, { username, password, baseUrl }) {
     await passwordInput.fill(password);
     await page.locator(S.SIGN_IN_BUTTON).click();
   } catch (error) {
-    // Check if already logged in
     const isLoggedIn = await page.locator(S.CART_LINK).isVisible().catch(() => false);
     if (isLoggedIn) {
       console.log('Already logged in');
@@ -55,14 +61,33 @@ async function login(page, { username, password, baseUrl }) {
     throw new Error(`Login failed: ${error.message}`);
   }
 
-  // Wait for navigation after login - check for cart link (indicates successful login)
-  await page.waitForTimeout(2000); // Give page time to navigate
-  
+  // Handle post-login interstitials
+  await page.waitForTimeout(3000);
+
+  // "Keep hackers out" / "Add mobile number" → click "Not now"
+  try {
+    const notNow = page.locator('a:has-text("Not now"), button:has-text("Not now")');
+    const notNowVisible = await notNow.isVisible().catch(() => false);
+    if (notNowVisible) {
+      console.log('Skipping "Keep hackers out" interstitial...');
+      await notNow.click();
+      await page.waitForTimeout(2000);
+    }
+  } catch {
+    // No interstitial — continue
+  }
+
+  // Navigate back to homepage to ensure cart link is visible
+  await page.goto(baseUrl, {
+    waitUntil: 'domcontentloaded',
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(2000);
+
   // Validate login success by checking for cart or account elements
   const isLoggedIn = await page.locator(S.CART_LINK).isVisible().catch(() => false);
-  
+
   if (!isLoggedIn) {
-    // Check for error message
     const errorVisible = await page.locator(S.LOGIN_ERROR).isVisible().catch(() => false);
     if (errorVisible) {
       const errorText = await page.locator(S.LOGIN_ERROR).textContent();

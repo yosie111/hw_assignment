@@ -34,10 +34,18 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
+// ─── Health Check ───
+app.get('/', (req, res) => res.redirect('/api/health'));
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
+
+
 // ─── API Routes ───
 app.use('/api/search', searchRoutes);
 app.use('/api/purchase', purchaseRoutes);
 app.use('/api/status', statusRoutes);
+
 
 // ─── Screenshots (static files from automation) ───
 app.use('/api/screenshots', express.static(

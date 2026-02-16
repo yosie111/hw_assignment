@@ -2,14 +2,20 @@
 // ★ Single source of truth for Amazon selectors
 
 module.exports = {
+
+  // Login/Sign-in
+  
   // Login/Sign-in
   SIGN_IN_LINK:       '#nav-link-accountList',
-  EMAIL_INPUT:        '#ap_email',
-  CONTINUE_BUTTON:    '#continue',
-  PASSWORD_INPUT:     '#ap_password',
-  SIGN_IN_BUTTON:     '#signInSubmit',
+  EMAIL_INPUT:        '#ap_email_login',                     // ← שונה
+  CONTINUE_BUTTON:    'input[type=submit].a-button-input',   // ← שונה
+  PASSWORD_INPUT:     '#ap_password',                        // ← מקורי, נשאר
+  SIGN_IN_BUTTON:     '#signInSubmit',                       // ← מקורי, נשאר
   LOGIN_ERROR:        '#auth-error-message-box',
   
+// Post-login interstitials
+  SKIP_NOT_NOW:       'a:has-text("Not now"), button:has-text("Not now")',
+
   // Search
   SEARCH_INPUT:       '#twotabsearchtextbox',
   SEARCH_BUTTON:      '#nav-search-submit-button',
