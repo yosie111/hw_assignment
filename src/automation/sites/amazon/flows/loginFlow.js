@@ -1,6 +1,7 @@
 // src/automation/sites/amazon/flows/loginFlow.js
 
 const S = require('../selectors');
+const config = require('../../config');
 
 /**
  * Amazon login flow: Navigate → Sign In → Fill credentials → Validate success
@@ -21,7 +22,7 @@ async function login(page, { username, password, baseUrl }) {
 
   // Click on "Sign in" link
   try {
-    await page.locator(S.SIGN_IN_LINK).click({ timeout: 5000 });
+    await page.locator(S.SIGN_IN_LINK).click({ timeout: config.DEFAULT_TIMEOUT });
   } catch (error) {
     // May already be on login page or signed in
     console.log('Sign in link not found, may already be on login page');
@@ -30,7 +31,7 @@ async function login(page, { username, password, baseUrl }) {
   // Fill email and click continue
   try {
     const emailInput = page.locator(S.EMAIL_INPUT);
-    await emailInput.waitFor({ state: 'visible', timeout: 5000 });
+    await emailInput.waitFor({ state: 'visible', timeout: config.DEFAULT_TIMEOUT });
     await emailInput.fill(username);
     await page.locator(S.CONTINUE_BUTTON).click();
   } catch (error) {
@@ -41,7 +42,7 @@ async function login(page, { username, password, baseUrl }) {
   // Fill password and sign in
   try {
     const passwordInput = page.locator(S.PASSWORD_INPUT);
-    await passwordInput.waitFor({ state: 'visible', timeout: 5000 });
+    await passwordInput.waitFor({ state: 'visible', timeout: config.DEFAULT_TIMEOUT });
     await passwordInput.fill(password);
     await page.locator(S.SIGN_IN_BUTTON).click();
   } catch (error) {
