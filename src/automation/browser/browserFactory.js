@@ -38,6 +38,14 @@ async function launchBrowser(options = {}) {
   page.setDefaultTimeout(config.DEFAULT_TIMEOUT);
   page.setDefaultNavigationTimeout(config.NAVIGATION_TIMEOUT);
 
+  // Automatically dismiss unexpected browser dialogs (e.g. IDM registration popups,
+  // alert() calls). None of the automated flows intentionally trigger dialogs,
+  // so any dialog that appears is an interruption that should be dismissed.
+  page.on('dialog', async (dialog) => {
+    console.log(`Auto-dismissing dialog: ${dialog.message()}`);
+    await dialog.dismiss();
+  });
+
   return { browser, context, page };
 }
 
