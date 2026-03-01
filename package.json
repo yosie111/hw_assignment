@@ -5,7 +5,7 @@
   "main": "src/app.js",
   "scripts": {
     "server": "node src/api/server.js",
-    "client": "npm start --prefix client",
+    "client": "node scripts/start-client.js",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "demo": "node scripts/run_demo.js",
     "test": "jest",

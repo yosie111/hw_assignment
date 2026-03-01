@@ -68,28 +68,43 @@ app.use(errorHandler);
 
 // ─── Start Server (only when run directly, not when imported for tests) ───
 if (require.main === module) {
-  const PORT = process.env.PORT || 8000;
-  const server = app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`API: http://localhost:${PORT}/api`);
-  });
+  const startPort = parseInt(process.env.PORT, 10) || 8000;
 
-  // Graceful shutdown — close connections, let running tasks finish
-  const shutdown = (signal) => {
-    console.log(`\n${signal} received. Shutting down...`);
-    server.close(() => {
-      console.log('Server closed.');
-      process.exit(0);
+  function startServer(port) {
+    const server = app.listen(port);
+
+    server.on('listening', () => {
+      console.log(`Server running on http://localhost:${port}`);
+      console.log(`API: http://localhost:${port}/api`);
+
+      // Graceful shutdown — close connections, let running tasks finish
+      const shutdown = (signal) => {
+        console.log(`\n${signal} received. Shutting down...`);
+        server.close(() => {
+          console.log('Server closed.');
+          process.exit(0);
+        });
+        setTimeout(() => {
+          console.error('Forced shutdown after timeout.');
+          process.exit(1);
+        }, 10000).unref();
+      };
+
+      process.on('SIGTERM', () => shutdown('SIGTERM'));
+      process.on('SIGINT', () => shutdown('SIGINT'));
     });
-    // Force exit after 10 seconds if tasks don't finish
-    setTimeout(() => {
-      console.error('Forced shutdown after timeout.');
-      process.exit(1);
-    }, 10000).unref();
-  };
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${port} is busy, trying ${port + 1}...`);
+        startServer(port + 1);
+      } else {
+        throw err;
+      }
+    });
+  }
+
+  startServer(startPort);
 }
 
 module.exports = app;
