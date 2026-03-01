@@ -1,12 +1,20 @@
 // tests/api/purchaseRoutes.test.js
+//
+// ★ DI-aware: mocks both the service AND the adapter factory.
 
 jest.mock('../../src/services/purchaseService', () => ({
   executePurchase: jest.fn(),
 }));
 
+jest.mock('../../src/automation/adapters/adapterFactory', () => ({
+  createAdapter: jest.fn(() => ({ name: 'mock-adapter' })),
+  getAvailableSites: jest.fn(() => ['saucedemo', 'amazon']),
+}));
+
 const request = require('supertest');
 const app = require('../../src/api/server');
 const { executePurchase } = require('../../src/services/purchaseService');
+const { createAdapter } = require('../../src/automation/adapters/adapterFactory');
 
 const validBody = {
   product: {
@@ -39,7 +47,7 @@ describe('POST /api/purchase', () => {
     expect(res.body.message).toContain('Purchase initiated');
   });
 
-  test('passes product and shipping to executePurchase', async () => {
+  test('creates adapter and passes it with product/shipping to executePurchase', async () => {
     executePurchase.mockResolvedValue({ requestId: 'purchase-002' });
 
     await request(app)
@@ -47,8 +55,11 @@ describe('POST /api/purchase', () => {
       .send(validBody)
       .expect(202);
 
+    // ★ Verify DI: route created adapter and injected it as 1st arg
+    expect(createAdapter).toHaveBeenCalledWith('saucedemo');
     expect(executePurchase).toHaveBeenCalledWith(
-      expect.objectContaining({
+      expect.objectContaining({ name: 'mock-adapter' }),  // 1st arg: adapter
+      expect.objectContaining({                            // 2nd arg: params
         product: expect.objectContaining({
           id: 'sauce-labs-onesie',
           title: 'Sauce Labs Onesie',
@@ -71,9 +82,10 @@ describe('POST /api/purchase', () => {
       .send(validBody)
       .expect(202);
 
-    const calledWith = executePurchase.mock.calls[0][0];
-    expect(calledWith.product.currency).toBe('USD');
-    expect(calledWith.product.source).toBe('Saucedemo');
+    // 2nd argument (index [1]) is now the params object
+    const params = executePurchase.mock.calls[0][1];
+    expect(params.product.currency).toBe('USD');
+    expect(params.product.source).toBe('Saucedemo');
   });
 
   // ─── Validation errors (400) ───

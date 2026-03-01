@@ -2,11 +2,15 @@
 //
 // POST /api/purchase — Asynchronous (Fire & Forget)
 //
-// Flow: validate → executePurchase() → 202 Accepted { requestId }
-// Automation runs in background. UI polls GET /api/status/:requestId.
+// ★ DI: Route handler creates the adapter and injects it into the service.
+//   The adapter is captured in the closure and passed to the background
+//   _runPurchase() task — no global state.
+//
+// Flow: validate → createAdapter(site) → executePurchase(adapter, payload) → 202 Accepted
 
 const router = require('express').Router();
 const { executePurchase } = require('../../services/purchaseService');
+const { createAdapter } = require('../../automation/adapters/adapterFactory');
 const { purchaseSchema, validate } = require('../middleware/validators');
 
 /**
@@ -25,7 +29,10 @@ const { purchaseSchema, validate } = require('../middleware/validators');
 router.post('/', validate(purchaseSchema), async (req, res, next) => {
   try {
     const { site, product, shipping } = req.validated;
-    const { requestId } = await executePurchase({ site, product, shipping, buyerIp: req.ip });
+
+    // ★ Composition Root: create adapter here, inject into service
+    const adapter = createAdapter(site);
+    const { requestId } = await executePurchase(adapter, { product, shipping });
 
     res.status(202).json({
       requestId,

@@ -2,7 +2,12 @@
 //
 // Async Purchase Service — Fire-and-Forget with Polling
 //
+// ★ DI Change: adapter is injected by the caller (route handler),
+//   NOT created inside this module. The adapter is passed through to
+//   _runPurchase which runs in the background.
+//
 // Design Patterns:
+//   - DI (Dependency Injection): adapter comes from outside
 //   - Fire-and-Forget: executePurchase returns requestId immediately (HTTP 202)
 //   - _runPurchase runs in background — UI polls GET /api/status/:requestId
 //   - Reconciliation: Oracle calc vs DOM totalText (warn on mismatch, never block)
@@ -10,20 +15,19 @@
 //   - Defensive Programming: mismatch/validation errors = warn, not crash
 //
 // Flow:
-//   executePurchase({ product, shipping })
+//   executePurchase(adapter, { product, shipping })
 //     → validate inputs (Fail Fast)
 //     → uuid() → statusStore.create()
-//     → _runPurchase() (NO AWAIT — fire and forget)
+//     → _runPurchase(adapter, ...) (NO AWAIT — fire and forget)
 //     → return { requestId } immediately
 //
-//   _runPurchase() (background):
-//     → automation.purchase()
+//   _runPurchase(adapter, ...) (background):
+//     → adapter.purchase()
 //     → Oracle validation (calculateCart vs DOM total)
 //     → createOrder() (DDD Aggregate, frozen)
 //     → statusStore.complete(requestId, order)
 
 const { randomUUID } = require('crypto');
-const { purchase } = require('../automation');
 const { createOrder } = require('../domain/Order');
 const { calculateCart, EPSILON } = require('../domain/CartCalculator');
 const statusStore = require('./statusStore');
@@ -34,14 +38,14 @@ const { TAX_RATE } = require('../automation/config');
 /**
  * Start async purchase — returns requestId immediately (202 Accepted).
  *
+ * @param {SiteAdapter} adapter - Injected adapter (SauceDemoAdapter, FakeAdapter, …)
  * @param {Object} params
- * @param {string} [params.site='saucedemo'] - Site to purchase from ('saucedemo' or 'amazon')
  * @param {Object} params.product - frozen Product (must have .title and .price)
  * @param {Object} params.shipping - { firstName, lastName, postalCode }
  * @returns {{ requestId: string }}
  * @throws {Error} if product or shipping invalid (Fail Fast)
  */
-async function executePurchase({ site = 'saucedemo', product, shipping }) {
+async function executePurchase(adapter, { product, shipping }) {
   // Fail Fast — validate before spending resources
   if (!product || !product.title) {
     throw new Error('Valid product with title is required for purchase');
@@ -54,7 +58,8 @@ async function executePurchase({ site = 'saucedemo', product, shipping }) {
   statusStore.create(requestId, 'purchase');
 
   // Fire and Forget — return requestId immediately
-  _runPurchase({ site, product, shipping, requestId }).catch((err) => {
+  // ★ adapter is captured in the closure — no global state
+  _runPurchase(adapter, { product, shipping, requestId }).catch((err) => {
     console.error(`[${requestId}] Unhandled purchase error:`, err.message);
   });
 
@@ -64,20 +69,22 @@ async function executePurchase({ site = 'saucedemo', product, shipping }) {
 /**
  * Background purchase execution (not awaited by API).
  * UI polls GET /api/status/:requestId to track progress.
+ *
+ * @param {SiteAdapter} adapter - Same adapter instance passed from executePurchase
+ * @param {Object} params
  * @private
  */
-async function _runPurchase({ site, product, shipping, requestId }) {
+async function _runPurchase(adapter, { product, shipping, requestId }) {
   try {
-    // Automation — browser does the actual purchase
-    const result = await purchase({
-      site,
+    // ★ Adapter call — adapter handles browser, login, cart, checkout
+    const result = await adapter.purchase({
       productTitle: product.title,
       shipping,
       requestId,
       onStep: (event) => statusStore.updateStep(requestId, event),
     });
 
-    // Automation returned failure
+    // Automation returned failure (graceful — error screenshot taken)
     if (result.status === 'failed') {
       createOrder({
         requestId,
@@ -94,7 +101,7 @@ async function _runPurchase({ site, product, shipping, requestId }) {
     }
 
     // Oracle Validation (Reconciliation Pattern)
-    // Compare Oracle subtotal vs Site subtotal — works correctly regardless of tax config
+    // Compare Oracle subtotal vs Site subtotal
     let cartValidation = null;
     try {
       const calc = calculateCart([product], { taxRate: TAX_RATE });

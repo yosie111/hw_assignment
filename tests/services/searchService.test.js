@@ -1,15 +1,13 @@
 // tests/services/searchService.test.js
+//
+// ★ DI in action: NO jest.mock needed!
+//   FakeAdapter replaces real automation — tests run instantly without Playwright.
 
-// Mock automation BEFORE requiring searchService
-jest.mock('../../src/automation', () => ({
-  search: jest.fn(),
-}));
-
-const { search: mockSearch } = require('../../src/automation');
+const { FakeAdapter, DEFAULT_PRODUCTS } = require('../../src/automation/adapters/FakeAdapter');
 const { executeSearch, getStatus } = require('../../src/services/searchService');
 const statusStore = require('../../src/services/statusStore');
 
-// Helper: raw product as automation returns from DOM
+// Helper: raw product matching FakeAdapter's default format
 const rawProduct = (overrides = {}) => ({
   id: 'sauce-labs-onesie',
   title: 'Sauce Labs Onesie',
@@ -22,29 +20,26 @@ const rawProduct = (overrides = {}) => ({
 });
 
 describe('searchService', () => {
+  let adapter;
+
   beforeEach(() => {
     statusStore._clear();
-    jest.clearAllMocks();
+    adapter = new FakeAdapter();
   });
 
   // ===== executeSearch — happy path =====
   describe('executeSearch() — happy path', () => {
     test('returns requestId and enriched products', async () => {
-      mockSearch.mockResolvedValue([
-        rawProduct(),
-        rawProduct({ id: 'sauce-labs-backpack', title: 'Sauce Labs Backpack', price: 29.99 }),
-      ]);
-
-      const result = await executeSearch({ query: '', filters: {} });
+      const result = await executeSearch(adapter, { query: '', filters: {} });
 
       expect(result.requestId).toBeDefined();
-      expect(result.products).toHaveLength(2);
+      expect(result.products).toHaveLength(DEFAULT_PRODUCTS.length);
     });
 
     test('enriches each product with calc (Oracle tax breakdown)', async () => {
-      mockSearch.mockResolvedValue([rawProduct({ price: 7.99 })]);
+      adapter.setProducts([rawProduct({ price: 7.99 })]);
 
-      const { products } = await executeSearch({ query: '', filters: {} });
+      const { products } = await executeSearch(adapter, { query: '', filters: {} });
 
       expect(products[0].calc).toBeDefined();
       expect(products[0].calc.subtotal).toBe(7.99);
@@ -53,9 +48,9 @@ describe('searchService', () => {
     });
 
     test('preserves original product fields alongside calc', async () => {
-      mockSearch.mockResolvedValue([rawProduct()]);
+      adapter.setProducts([rawProduct()]);
 
-      const { products } = await executeSearch({ query: '', filters: {} });
+      const { products } = await executeSearch(adapter, { query: '', filters: {} });
 
       expect(products[0].id).toBe('sauce-labs-onesie');
       expect(products[0].title).toBe('Sauce Labs Onesie');
@@ -65,52 +60,35 @@ describe('searchService', () => {
       expect(products[0].calc).toBeDefined();
     });
 
-    test('passes query and filters to automation', async () => {
-      mockSearch.mockResolvedValue([]);
+    test('adapter receives query and filters', async () => {
+      await executeSearch(adapter, { query: 'onesie', filters: { maxPrice: 10 } });
 
-      await executeSearch({ query: 'onesie', filters: { maxPrice: 10 } });
-
-      expect(mockSearch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          query: 'onesie',
-          filters: { maxPrice: 10 },
-        })
-      );
+      expect(adapter.searchCalls).toHaveLength(1);
+      expect(adapter.searchCalls[0].query).toBe('onesie');
+      expect(adapter.searchCalls[0].filters).toEqual({ maxPrice: 10 });
     });
 
-    test('passes requestId and onStep callback to automation', async () => {
-      mockSearch.mockResolvedValue([]);
+    test('adapter receives requestId', async () => {
+      await executeSearch(adapter, { query: '' });
 
-      await executeSearch({ query: '' });
-
-      expect(mockSearch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          requestId: expect.any(String),
-          onStep: expect.any(Function),
-        })
-      );
+      expect(adapter.searchCalls[0].requestId).toBeDefined();
+      expect(typeof adapter.searchCalls[0].requestId).toBe('string');
     });
 
-    test('handles empty products from automation', async () => {
-      mockSearch.mockResolvedValue([]);
+    test('handles empty products from adapter', async () => {
+      adapter.setProducts([]);
 
-      const result = await executeSearch({ query: 'nonexistent' });
+      const result = await executeSearch(adapter, { query: 'nonexistent' });
 
       expect(result.products).toEqual([]);
       expect(result.requestId).toBeDefined();
     });
 
     test('defaults query to empty string and filters to empty object', async () => {
-      mockSearch.mockResolvedValue([]);
+      await executeSearch(adapter, {});
 
-      await executeSearch({});
-
-      expect(mockSearch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          query: '',
-          filters: {},
-        })
-      );
+      expect(adapter.searchCalls[0].query).toBe('');
+      expect(adapter.searchCalls[0].filters).toEqual({});
     });
   });
 
@@ -119,12 +97,12 @@ describe('searchService', () => {
     test('skips product with missing title', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      mockSearch.mockResolvedValue([
+      adapter.setProducts([
         rawProduct({ title: '' }), // invalid
         rawProduct({ id: 'good', title: 'Valid Product', price: 9.99 }),
       ]);
 
-      const { products } = await executeSearch({ query: '' });
+      const { products } = await executeSearch(adapter, { query: '' });
 
       expect(products).toHaveLength(1);
       expect(products[0].title).toBe('Valid Product');
@@ -138,12 +116,12 @@ describe('searchService', () => {
     test('skips product with negative price', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      mockSearch.mockResolvedValue([
+      adapter.setProducts([
         rawProduct({ price: -5 }), // invalid
         rawProduct({ id: 'good', title: 'Good Product', price: 15.99 }),
       ]);
 
-      const { products } = await executeSearch({ query: '' });
+      const { products } = await executeSearch(adapter, { query: '' });
 
       expect(products).toHaveLength(1);
       expect(warnSpy).toHaveBeenCalled();
@@ -154,12 +132,12 @@ describe('searchService', () => {
     test('returns empty array when all products invalid', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      mockSearch.mockResolvedValue([
+      adapter.setProducts([
         rawProduct({ title: '' }),
         rawProduct({ id: null, title: null }),
       ]);
 
-      const { products } = await executeSearch({ query: '' });
+      const { products } = await executeSearch(adapter, { query: '' });
 
       expect(products).toEqual([]);
       expect(warnSpy).toHaveBeenCalledTimes(2);
@@ -171,9 +149,7 @@ describe('searchService', () => {
   // ===== Status tracking =====
   describe('status tracking', () => {
     test('creates status entry on start', async () => {
-      mockSearch.mockResolvedValue([]);
-
-      const { requestId } = await executeSearch({ query: '' });
+      const { requestId } = await executeSearch(adapter, { query: '' });
       const status = statusStore.get(requestId);
 
       expect(status).not.toBeNull();
@@ -181,24 +157,18 @@ describe('searchService', () => {
     });
 
     test('marks status as completed on success', async () => {
-      mockSearch.mockResolvedValue([rawProduct()]);
+      adapter.setProducts([rawProduct()]);
 
-      const { requestId } = await executeSearch({ query: '' });
+      const { requestId } = await executeSearch(adapter, { query: '' });
       const status = statusStore.get(requestId);
 
       expect(status.status).toBe('completed');
       expect(status.result).toEqual({ count: 1 });
     });
 
-    test('records onStep events from automation', async () => {
-      mockSearch.mockImplementation(async ({ onStep }) => {
-        onStep({ step: 'OpenBrowser', status: 'completed', durationMs: 500 });
-        onStep({ step: 'Login', status: 'completed', durationMs: 1200 });
-        onStep({ step: 'SearchAndScrape', status: 'completed', durationMs: 3000 });
-        return [rawProduct()];
-      });
-
-      const { requestId } = await executeSearch({ query: '' });
+    test('records onStep events from adapter', async () => {
+      // FakeAdapter emits 3 steps: OpenBrowser, Login, SearchAndScrape
+      const { requestId } = await executeSearch(adapter, { query: '' });
       const status = statusStore.get(requestId);
 
       expect(status.steps).toHaveLength(3);
@@ -207,13 +177,11 @@ describe('searchService', () => {
       expect(status.steps[2].step).toBe('SearchAndScrape');
     });
 
-    test('marks status as failed when automation throws', async () => {
-      mockSearch.mockRejectedValue(new Error('Browser crashed'));
+    test('marks status as failed when adapter throws', async () => {
+      adapter.setSearchError(new Error('Browser crashed'));
 
-      await expect(executeSearch({ query: '' })).rejects.toThrow('Browser crashed');
+      await expect(executeSearch(adapter, { query: '' })).rejects.toThrow('Browser crashed');
 
-      // Status should be marked as failed
-      // We need to find the requestId — check all entries
       const all = statusStore.getAll();
       expect(all).toHaveLength(1);
       expect(all[0].status).toBe('failed');
@@ -224,9 +192,7 @@ describe('searchService', () => {
   // ===== getStatus =====
   describe('getStatus()', () => {
     test('returns status for existing requestId', async () => {
-      mockSearch.mockResolvedValue([]);
-
-      const { requestId } = await executeSearch({ query: '' });
+      const { requestId } = await executeSearch(adapter, { query: '' });
       const status = getStatus(requestId);
 
       expect(status).not.toBeNull();
@@ -240,17 +206,17 @@ describe('searchService', () => {
 
   // ===== Error propagation =====
   describe('error propagation', () => {
-    test('throws automation errors to caller (for API layer)', async () => {
-      mockSearch.mockRejectedValue(new Error('Network timeout'));
+    test('throws adapter errors to caller (for API layer)', async () => {
+      adapter.setSearchError(new Error('Network timeout'));
 
-      await expect(executeSearch({ query: '' })).rejects.toThrow('Network timeout');
+      await expect(executeSearch(adapter, { query: '' })).rejects.toThrow('Network timeout');
     });
 
     test('marks statusStore as failed before throwing', async () => {
-      mockSearch.mockRejectedValue(new Error('Timeout'));
+      adapter.setSearchError(new Error('Timeout'));
 
       try {
-        await executeSearch({ query: '' });
+        await executeSearch(adapter, { query: '' });
       } catch (_) {
         // expected
       }
@@ -260,40 +226,59 @@ describe('searchService', () => {
     });
   });
 
-  // ===== Multiple products — Oracle calc verification =====
+  // ===== Oracle calc verification =====
   describe('Oracle calc per product', () => {
     test('calculates correct tax for $29.99 product', async () => {
-      mockSearch.mockResolvedValue([rawProduct({ price: 29.99 })]);
+      adapter.setProducts([rawProduct({ price: 29.99 })]);
 
-      const { products } = await executeSearch({ query: '' });
+      const { products } = await executeSearch(adapter, { query: '' });
 
-      // tax = 0%
       expect(products[0].calc.subtotal).toBe(29.99);
       expect(products[0].calc.tax).toBe(0);
       expect(products[0].calc.total).toBe(29.99);
     });
 
-    test('calculates correct tax for $49.99 product', async () => {
-      mockSearch.mockResolvedValue([rawProduct({ price: 49.99 })]);
-
-      const { products } = await executeSearch({ query: '' });
-
-      // tax = 0%
-      expect(products[0].calc.subtotal).toBe(49.99);
-      expect(products[0].calc.tax).toBe(0);
-      expect(products[0].calc.total).toBe(49.99);
-    });
-
     test('each product gets independent calc', async () => {
-      mockSearch.mockResolvedValue([
+      adapter.setProducts([
         rawProduct({ id: 'a', title: 'Product A', price: 7.99 }),
         rawProduct({ id: 'b', title: 'Product B', price: 29.99 }),
       ]);
 
-      const { products } = await executeSearch({ query: '' });
+      const { products } = await executeSearch(adapter, { query: '' });
 
       expect(products[0].calc.total).toBe(7.99);
       expect(products[1].calc.total).toBe(29.99);
+    });
+  });
+
+  // ===== DI proof: same tests, different adapter config =====
+  describe('DI proof — adapter behavior controls service output', () => {
+    test('adapter with custom products drives service results', async () => {
+      const customAdapter = new FakeAdapter({
+        products: [
+          { id: 'x', title: 'Custom', price: 100, currency: 'EUR', source: 'Custom' },
+        ],
+      });
+
+      const { products } = await executeSearch(customAdapter, { query: '' });
+
+      expect(products).toHaveLength(1);
+      expect(products[0].title).toBe('Custom');
+      expect(products[0].currency).toBe('EUR');
+      expect(products[0].calc.subtotal).toBe(100);
+    });
+
+    test('adapter filter behavior is respected', async () => {
+      // FakeAdapter implements client-side maxPrice filtering
+      const { products } = await executeSearch(adapter, {
+        query: '',
+        filters: { maxPrice: 10 },
+      });
+
+      // Only products with price <= 10 should be returned
+      products.forEach(p => {
+        expect(p.price).toBeLessThanOrEqual(10);
+      });
     });
   });
 });

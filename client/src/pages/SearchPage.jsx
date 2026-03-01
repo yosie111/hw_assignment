@@ -17,11 +17,12 @@ export default function SearchPage() {
   const [error, setError] = useState(null);
   const [searched, setSearched] = useState(false);
 
-  const handleSearch = async (searchParams) => {
+  const handleSearch = async (searchParams = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await searchProducts({ ...searchParams, site });
+      const params = { query: 'Sauce', filters: {}, ...searchParams, site };
+      const data = await searchProducts(params);
       setProducts(data.products);
       setSearched(true);
     } catch (err) {

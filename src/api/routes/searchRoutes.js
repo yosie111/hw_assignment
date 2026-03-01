@@ -2,12 +2,15 @@
 //
 // POST /api/search — Synchronous search
 //
-// Flow: validate → executeSearch() → 200 { requestId, products[] }
-// Search is synchronous by design: user waits for results (5-10 sec),
-// there's nothing useful to show during that time.
+// ★ DI: Route handler creates the adapter and injects it into the service.
+//   This is the "composition root" — the only place that knows about
+//   both the factory and the service.
+//
+// Flow: validate → createAdapter(site) → executeSearch(adapter, payload) → 200
 
 const router = require('express').Router();
 const { executeSearch } = require('../../services/searchService');
+const { createAdapter } = require('../../automation/adapters/adapterFactory');
 const { searchSchema, validate } = require('../middleware/validators');
 
 /**
@@ -15,14 +18,17 @@ const { searchSchema, validate } = require('../middleware/validators');
  *
  * Body: { site?: string, query: string, filters?: { maxPrice?: number } }
  *
- * Response 200: { requestId, products: [{ id, title, price, ..., calc }] }
+ * Response 200: { requestId, products: [{ id, title, price, …, calc }] }
  * Response 400: { error: "Validation failed", details: [...] }
  * Response 500: { error: "Search failed: ..." }
  */
 router.post('/', validate(searchSchema), async (req, res, next) => {
   try {
     const { site, query, filters } = req.validated;
-    const result = await executeSearch({ site, query, filters, buyerIp: req.ip });
+
+    // ★ Composition Root: create adapter here, inject into service
+    const adapter = createAdapter(site);
+    const result = await executeSearch(adapter, { query, filters });
 
     res.json({
       requestId: result.requestId,

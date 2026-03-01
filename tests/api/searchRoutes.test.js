@@ -1,12 +1,21 @@
 // tests/api/searchRoutes.test.js
+//
+// ★ DI-aware: mocks both the service AND the adapter factory.
+//   The route creates adapter via factory and passes it to service.
 
 jest.mock('../../src/services/searchService', () => ({
   executeSearch: jest.fn(),
 }));
 
+jest.mock('../../src/automation/adapters/adapterFactory', () => ({
+  createAdapter: jest.fn(() => ({ name: 'mock-adapter' })),
+  getAvailableSites: jest.fn(() => ['saucedemo', 'amazon']),
+}));
+
 const request = require('supertest');
 const app = require('../../src/api/server');
 const { executeSearch } = require('../../src/services/searchService');
+const { createAdapter } = require('../../src/automation/adapters/adapterFactory');
 
 describe('POST /api/search', () => {
   beforeEach(() => {
@@ -32,7 +41,7 @@ describe('POST /api/search', () => {
     expect(res.body.products[0].calc.total).toBe(7.99);
   });
 
-  test('passes query and filters to executeSearch', async () => {
+  test('creates adapter and passes it to executeSearch', async () => {
     executeSearch.mockResolvedValue({ requestId: 'req-456', products: [] });
 
     await request(app)
@@ -40,8 +49,11 @@ describe('POST /api/search', () => {
       .send({ query: 'sauce', filters: { maxPrice: 15 } })
       .expect(200);
 
+    // ★ Verify DI: route created adapter and injected it as 1st arg
+    expect(createAdapter).toHaveBeenCalledWith('saucedemo');
     expect(executeSearch).toHaveBeenCalledWith(
-      expect.objectContaining({
+      expect.objectContaining({ name: 'mock-adapter' }),  // 1st arg: adapter
+      expect.objectContaining({                            // 2nd arg: params
         query: 'sauce',
         filters: { maxPrice: 15 },
       })
@@ -57,7 +69,8 @@ describe('POST /api/search', () => {
       .expect(200);
 
     expect(executeSearch).toHaveBeenCalledWith(
-      expect.objectContaining({
+      expect.anything(),                                   // adapter
+      expect.objectContaining({                            // params with defaults
         query: '',
         filters: {},
       })

@@ -2,6 +2,9 @@
 //
 // Zod schemas for request validation + Express middleware factory.
 //
+// ★ DI Change: site enum is built dynamically from adapterFactory.
+//   When a new adapter is registered, validators automatically accept it.
+//
 // Design:
 //   - searchSchema: permissive (empty query = all products)
 //   - purchaseSchema: strict (all fields required for checkout)
@@ -9,10 +12,15 @@
 //     or returns 400 with structured error details on failure.
 
 const { z } = require('zod');
+const { getAvailableSites } = require('../../automation/adapters/adapterFactory');
+
+// ★ Dynamic site enum — driven by adapter registry
+const availableSites = getAvailableSites();
+const siteEnum = z.enum(/** @type {[string, ...string[]]} */ (availableSites)).default(availableSites[0]);
 
 // ─── Search Schema ───
 const searchSchema = z.object({
-  site: z.enum(['saucedemo', 'amazon']).default('saucedemo'),
+  site: siteEnum,
   query: z.string().default(''),
   filters: z.object({
     maxPrice: z.number().positive().optional(),
@@ -21,7 +29,7 @@ const searchSchema = z.object({
 
 // ─── Purchase Schema ───
 const purchaseSchema = z.object({
-  site: z.enum(['saucedemo', 'amazon']).default('saucedemo'),
+  site: siteEnum,
   product: z.object({
     id: z.string().min(1, 'Product ID is required'),
     title: z.string().min(1, 'Product title is required'),

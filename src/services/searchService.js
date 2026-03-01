@@ -1,22 +1,28 @@
 // src/services/searchService.js
 //
-// Synchronous Search Service — Facade over Automation + Domain
+// Synchronous Search Service — Facade over Adapter + Domain
+//
+// ★ DI Change: adapter is injected by the caller (route handler),
+//   NOT created inside this module. This means:
+//   - Unit tests inject FakeAdapter (no Playwright)
+//   - Route handler injects real adapter via createAdapter(site)
+//   - Service has ZERO knowledge of which site it's talking to
 //
 // Design Patterns:
+//   - DI (Dependency Injection): adapter comes from outside
 //   - Facade: hides complexity of automation + domain behind single call
-//   - Observer: onStep callback injected into automation (decoupled status tracking)
+//   - Observer: onStep callback injected into adapter (decoupled status tracking)
 //   - Gatekeeper: createProduct validates/freezes each raw product — invalid ones skipped
 //   - Oracle: calculateCart enriches each product with tax breakdown for UI display
 //
 // Flow:
-//   executeSearch({ query, filters })
+//   executeSearch(adapter, { query, filters })
 //     → uuid() → statusStore.create()
-//     → automation.search() → rawProducts[]
+//     → adapter.search() → rawProducts[]
 //     → for each: createProduct() → calculateCart() → enriched product
 //     → statusStore.complete() → return { requestId, products[] }
 
 const { randomUUID } = require('crypto');
-const { search } = require('../automation');
 const { createProduct } = require('../domain/Product');
 const { calculateCart } = require('../domain/CartCalculator');
 const statusStore = require('./statusStore');
@@ -25,23 +31,22 @@ const statusStore = require('./statusStore');
 const { TAX_RATE } = require('../automation/config');
 
 /**
- * Execute search: automation → Domain Gatekeeper → Oracle enrichment.
+ * Execute search: adapter → Domain Gatekeeper → Oracle enrichment.
  *
+ * @param {SiteAdapter} adapter - Injected adapter (SauceDemoAdapter, FakeAdapter, …)
  * @param {Object} params
- * @param {string} [params.site='saucedemo'] - Site to search ('saucedemo' or 'amazon')
  * @param {string} [params.query] - search query (empty = all products)
- * @param {Object} [params.filters] - { maxPrice, minPrice, ... }
+ * @param {Object} [params.filters] - { maxPrice, minPrice, … }
  * @returns {Promise<{ requestId: string, products: Object[] }>}
- * @throws {Error} if automation crashes (statusStore also marked as failed)
+ * @throws {Error} if adapter crashes (statusStore also marked as failed)
  */
-async function executeSearch({ site = 'saucedemo', query, filters } = {}) {
+async function executeSearch(adapter, { query, filters } = {}) {
   const requestId = randomUUID();
   statusStore.create(requestId, 'search');
 
   try {
-    // Automation call — returns raw product objects from DOM scraping
-    const rawProducts = await search({
-      site,
+    // ★ Adapter call — adapter handles browser, login, scraping
+    const rawProducts = await adapter.search({
       query: query || '',
       filters: filters || {},
       requestId,
