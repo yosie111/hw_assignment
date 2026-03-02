@@ -10,7 +10,7 @@
     "demo": "node scripts/run_demo.js",
     "test": "jest",
     "test:unit": "jest tests/unit",
-    "test:e2e": "jest tests/e2e --detectOpenHandles",
+    "test:e2e": "jest tests/e2e --runInBand",
     "test:watch": "jest --watch"
   },
   "keywords": [
