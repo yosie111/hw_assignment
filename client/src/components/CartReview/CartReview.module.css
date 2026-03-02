@@ -1,0 +1,108 @@
+/* client/src/components/CartReview/CartReview.module.css */
+
+.cart {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 24px;
+  max-width: 480px;
+}
+
+.heading {
+  margin: 0 0 16px 0;
+  font-size: 1.25rem;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 0;
+}
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.source {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.price {
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 8px 0;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.totalRow {
+  font-weight: 700;
+  color: #111;
+  font-size: 1.05rem;
+  padding-top: 6px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.backBtn {
+  padding: 10px 20px;
+  background: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.backBtn:hover {
+  background: #e0e0e0;
+}
+
+.proceedBtn {
+  padding: 10px 24px;
+  background: var(--primary, #2563eb);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.proceedBtn:hover {
+  opacity: 0.9;
+}

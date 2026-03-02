@@ -9,6 +9,12 @@ import ProductCard from '../components/ProductCard/ProductCard';
 import ErrorDisplay from '../components/ErrorDisplay/ErrorDisplay';
 import styles from './SearchPage.module.css';
 
+const SITE_NAMES = {
+  saucedemo: 'Saucedemo',
+  amazon: 'Amazon',
+  toolshop: 'ToolShop',
+};
+
 export default function SearchPage() {
   const navigate = useNavigate();
   const [site, setSite] = useState('saucedemo');
@@ -36,9 +42,7 @@ export default function SearchPage() {
     navigate('/purchase', { state: { product, site } });
   };
 
-  const getSiteDisplayName = () => {
-    return site === 'amazon' ? 'Amazon' : 'Saucedemo';
-  };
+  const getSiteDisplayName = () => SITE_NAMES[site] || site;
 
   return (
     <div className={styles.container}>

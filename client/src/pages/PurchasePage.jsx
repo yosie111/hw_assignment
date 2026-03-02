@@ -1,9 +1,17 @@
 // client/src/pages/PurchasePage.jsx
+//
+// ★ Two-step purchase flow:
+//   Step 1: CartReview — shows selected product, price, tax breakdown
+//   Step 2: ShippingForm + StatusDisplay — fill shipping & track automation
+//
+// This fulfills the assignment requirement for a "Cart/Status Screen"
+// that displays the current state before and during the automation run.
 
 import React, { useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { purchaseProduct, getStatus } from '../api/client';
 import { usePolling } from '../hooks/usePolling';
+import CartReview from '../components/CartReview/CartReview';
 import ShippingForm from '../components/ShippingForm/ShippingForm';
 import StatusDisplay from '../components/StatusDisplay/StatusDisplay';
 import ErrorDisplay from '../components/ErrorDisplay/ErrorDisplay';
@@ -15,6 +23,9 @@ export default function PurchasePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { product, site = 'saucedemo' } = location.state || {};
+
+  // ★ Step state: 'cart' → 'checkout' (controls which screen is visible)
+  const [step, setStep] = useState('cart');
 
   const [requestId, setRequestId] = useState(null);
   const [status, setStatus] = useState(null);
@@ -77,7 +88,17 @@ export default function PurchasePage() {
       <h1>Purchase: {product.title}</h1>
       <p className={styles.price}>Price: ${product.price.toFixed(2)}</p>
 
-      {!requestId && (
+      {/* ── Step 1: Cart Review ── */}
+      {step === 'cart' && (
+        <CartReview
+          product={product}
+          onProceed={() => setStep('checkout')}
+          onBack={() => navigate('/')}
+        />
+      )}
+
+      {/* ── Step 2: Shipping Form + Live Status ── */}
+      {step === 'checkout' && !requestId && (
         <ShippingForm onSubmit={handlePurchase} loading={isInitiating} />
       )}
 

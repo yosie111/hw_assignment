@@ -1,6 +1,5 @@
 node_modules/
 .env
-screenshots/
 logs/
 *.log
 client/node_modules/
@@ -15,8 +14,11 @@ client/build/
 .pytest_cache/
 __pycache__/
 
-
 # Playwright artifacts
 test-results/
 playwright-report/
 
+# Screenshots — keep proof, ignore the rest
+screenshots/*
+!screenshots/.gitkeep
+!screenshots/6-order-complete*.png
