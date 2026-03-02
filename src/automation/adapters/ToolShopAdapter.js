@@ -52,6 +52,7 @@ class ToolShopAdapter extends SiteAdapter {
           email: config.TOOLSHOP_EMAIL,
           password: config.TOOLSHOP_PASSWORD,
           baseUrl: config.TOOLSHOP_BASE_URL,
+          apiUrl: config.TOOLSHOP_API_URL,
         })
       );
 
@@ -93,6 +94,7 @@ class ToolShopAdapter extends SiteAdapter {
           email: config.TOOLSHOP_EMAIL,
           password: config.TOOLSHOP_PASSWORD,
           baseUrl: config.TOOLSHOP_BASE_URL,
+          apiUrl: config.TOOLSHOP_API_URL,
         })
       );
       lastStep = 'Login';

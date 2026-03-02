@@ -31,6 +31,7 @@ module.exports = {
 
   // ToolShop Site
   TOOLSHOP_BASE_URL: requireEnv('TOOLSHOP_BASE_URL', 'https://practicesoftwaretesting.com'),
+  TOOLSHOP_API_URL: requireEnv('TOOLSHOP_API_URL', 'https://api.practicesoftwaretesting.com'),
   TOOLSHOP_EMAIL: requireEnv('TOOLSHOP_EMAIL'),
   TOOLSHOP_PASSWORD: requireEnv('TOOLSHOP_PASSWORD'),
 
