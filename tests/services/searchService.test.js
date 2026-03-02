@@ -251,6 +251,40 @@ describe('searchService', () => {
     });
   });
 
+  // ===== Step 6: Selection policy (recommendedId) =====
+  describe('selection policy — recommendedId', () => {
+    test('returns recommendedId pointing to cheapest product', async () => {
+      adapter.setProducts([
+        rawProduct({ id: 'expensive', title: 'Expensive', price: 49.99 }),
+        rawProduct({ id: 'cheap', title: 'Cheap', price: 7.99 }),
+        rawProduct({ id: 'mid', title: 'Mid', price: 15.99 }),
+      ]);
+
+      const result = await executeSearch(adapter, { query: '' });
+
+      expect(result.recommendedId).toBe('cheap');
+    });
+
+    test('recommendedId is null when no products', async () => {
+      adapter.setProducts([]);
+
+      const result = await executeSearch(adapter, { query: 'nonexistent' });
+
+      expect(result.recommendedId).toBeNull();
+    });
+
+    test('recommendedId matches first product when all same price', async () => {
+      adapter.setProducts([
+        rawProduct({ id: 'a', title: 'Product A', price: 10 }),
+        rawProduct({ id: 'b', title: 'Product B', price: 10 }),
+      ]);
+
+      const result = await executeSearch(adapter, { query: '' });
+
+      expect(result.recommendedId).toBe('a');
+    });
+  });
+
   // ===== DI proof: same tests, different adapter config =====
   describe('DI proof — adapter behavior controls service output', () => {
     test('adapter with custom products drives service results', async () => {

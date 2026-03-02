@@ -25,6 +25,7 @@
 const { randomUUID } = require('crypto');
 const { createProduct } = require('../domain/Product');
 const { calculateCart } = require('../domain/CartCalculator');
+const { selectProduct } = require('../automation/policies/selectProduct');
 const statusStore = require('./statusStore');
 
 // Tax rate — single source: config.js (reads from .env)
@@ -78,7 +79,20 @@ async function executeSearch(adapter, { query, filters } = {}) {
     }
 
     statusStore.complete(requestId, { count: products.length });
-    return { requestId, products };
+
+    // ★ Step 6: Select recommended product by policy (CHEAPEST by default)
+    // The user can override this by clicking any product in the UI.
+    let recommendedId = null;
+    try {
+      if (products.length > 0) {
+        const recommended = selectProduct(products, 'CHEAPEST');
+        recommendedId = recommended.id;
+      }
+    } catch (err) {
+      console.warn(`[${requestId}] Selection policy skipped: ${err.message}`);
+    }
+
+    return { requestId, products, recommendedId };
 
   } catch (error) {
     statusStore.fail(requestId, error.message);

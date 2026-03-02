@@ -9,16 +9,11 @@ import ProductCard from '../components/ProductCard/ProductCard';
 import ErrorDisplay from '../components/ErrorDisplay/ErrorDisplay';
 import styles from './SearchPage.module.css';
 
-const SITE_NAMES = {
-  saucedemo: 'Saucedemo',
-  amazon: 'Amazon',
-  toolshop: 'ToolShop',
-};
-
 export default function SearchPage() {
   const navigate = useNavigate();
   const [site, setSite] = useState('saucedemo');
   const [products, setProducts] = useState([]);
+  const [recommendedId, setRecommendedId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searched, setSearched] = useState(false);
@@ -30,6 +25,7 @@ export default function SearchPage() {
       const params = { query: 'Sauce', filters: {}, ...searchParams, site };
       const data = await searchProducts(params);
       setProducts(data.products);
+      setRecommendedId(data.recommendedId || null);
       setSearched(true);
     } catch (err) {
       setError(err);
@@ -42,7 +38,9 @@ export default function SearchPage() {
     navigate('/purchase', { state: { product, site } });
   };
 
-  const getSiteDisplayName = () => SITE_NAMES[site] || site;
+  const getSiteDisplayName = () => {
+    return site === 'amazon' ? 'Amazon' : 'Saucedemo';
+  };
 
   return (
     <div className={styles.container}>
@@ -76,6 +74,7 @@ export default function SearchPage() {
               <ProductCard
                 key={product.id}
                 product={product}
+                isRecommended={product.id === recommendedId}
                 onBuyClick={handleBuyClick}
               />
             ))}

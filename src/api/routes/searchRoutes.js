@@ -33,6 +33,7 @@ router.post('/', validate(searchSchema), async (req, res, next) => {
     res.json({
       requestId: result.requestId,
       products: result.products,
+      recommendedId: result.recommendedId,
     });
   } catch (error) {
     next(error);

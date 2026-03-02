@@ -4,9 +4,12 @@ import React from 'react';
 import PriceBreakdown from '../PriceBreakdown/PriceBreakdown';
 import styles from './ProductCard.module.css';
 
-export default function ProductCard({ product, onBuyClick }) {
+export default function ProductCard({ product, isRecommended, onBuyClick }) {
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${isRecommended ? styles.recommended : ''}`}>
+      {isRecommended && (
+        <span className={styles.badge}>Cheapest</span>
+      )}
       {product.imageUrl && (
         <img
           src={product.imageUrl}

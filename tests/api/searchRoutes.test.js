@@ -28,6 +28,7 @@ describe('POST /api/search', () => {
       products: [
         { id: '1', title: 'Onesie', price: 7.99, calc: { subtotal: 7.99, tax: 0, total: 7.99 } },
       ],
+      recommendedId: '1',
     });
 
     const res = await request(app)
@@ -39,6 +40,7 @@ describe('POST /api/search', () => {
     expect(res.body.products).toHaveLength(1);
     expect(res.body.products[0].title).toBe('Onesie');
     expect(res.body.products[0].calc.total).toBe(7.99);
+    expect(res.body.recommendedId).toBe('1');
   });
 
   test('creates adapter and passes it to executeSearch', async () => {
