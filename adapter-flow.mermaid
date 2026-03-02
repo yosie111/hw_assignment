@@ -1,0 +1,97 @@
+graph TD
+    %% ─── Client Layer ───
+    UI["🖥️ React UI<br/><b>SiteSelector</b><br/>saucedemo | toolshop | amazon"]
+    
+    UI -->|"POST /api/search<br/>{ site, query, filters }"| SR
+    UI -->|"POST /api/purchase<br/>{ site, product, shipping }"| PR
+    UI -->|"GET /api/status/:requestId"| STR
+
+    %% ─── API Layer ───
+    subgraph API ["API Layer (Express Routes)"]
+        SR["searchRoutes.js"]
+        PR["purchaseRoutes.js"]
+        STR["statusRoutes.js"]
+    end
+
+    SR -->|"validate(searchSchema)"| V["validators.js<br/><i>Zod validation</i>"]
+    PR -->|"validate(purchaseSchema)"| V
+    V -->|"req.validated.site"| AF
+
+    %% ─── Factory ───
+    AF{"adapterFactory.js<br/><b>createAdapter(site)</b>"}
+
+    AF -->|"site = 'saucedemo'"| SD
+    AF -->|"site = 'toolshop'"| TS
+    AF -->|"site = 'amazon'"| AZ
+
+    %% ─── Adapters ───
+    subgraph ADAPTERS ["Adapter Layer (SiteAdapter interface)"]
+        direction TB
+        SD["<b>SauceDemoAdapter</b><br/>search() + purchase()"]
+        TS["<b>ToolShopAdapter</b><br/>search() + purchase()"]
+        AZ["<b>AmazonAdapter</b><br/>search() + purchase()"]
+    end
+
+    %% ─── Services (don't know which adapter) ───
+    SR --> SS
+    PR --> PS
+
+    subgraph SERVICES ["Service Layer"]
+        SS["searchService.js<br/><b>executeSearch(adapter, ...)</b>"]
+        PS["purchaseService.js<br/><b>executePurchase(adapter, ...)</b><br/><i>fire &amp; forget</i>"]
+    end
+
+    SS -->|"adapter.search()"| ADAPTERS
+    PS -->|"adapter.purchase()"| ADAPTERS
+
+    %% ─── Site-Specific Flows ───
+    SD --> SDF
+    TS --> TSF
+    AZ --> AZF
+
+    subgraph FLOWS ["Site-Specific Flows (Playwright)"]
+        direction TB
+        SDF["<b>saucedemo/</b><br/>loginFlow → searchFlow<br/>cartFlow → checkoutFlow"]
+        TSF["<b>toolshop/</b><br/>loginFlow → searchFlow<br/>cartFlow → checkoutFlow"]
+        AZF["<b>amazon/</b><br/>loginFlow → searchFlow<br/><i>(experimental)</i>"]
+    end
+
+    SDF -->|"Playwright"| SITE1["🌐 saucedemo.com"]
+    TSF -->|"Playwright"| SITE2["🌐 practicesoftwaretesting.com"]
+    AZF -->|"Playwright"| SITE3["🌐 amazon.com"]
+
+    %% ─── Domain ───
+    SERVICES --> DOM
+
+    subgraph DOM ["Domain Layer"]
+        direction LR
+        P["Product<br/><i>frozen</i>"]
+        C["Cart<br/><i>frozen</i>"]
+        O["Order<br/><i>frozen</i>"]
+    end
+
+    %% ─── Status Store ───
+    PS -->|"statusStore.create()<br/>statusStore.complete()"| STORE["statusStore.js<br/><i>InMemoryStore</i>"]
+    STR -->|"statusStore.get()"| STORE
+
+    %% ─── Styling ───
+    classDef client fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    classDef api fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef factory fill:#fce7f3,stroke:#db2777,color:#831843
+    classDef adapter fill:#d1fae5,stroke:#059669,color:#064e3b
+    classDef service fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    classDef flow fill:#e0e7ff,stroke:#4f46e5,color:#312e81
+    classDef site fill:#f1f5f9,stroke:#64748b,color:#334155
+    classDef domain fill:#fff1f2,stroke:#e11d48,color:#881337
+    classDef store fill:#fefce8,stroke:#ca8a04,color:#713f12
+
+    class UI client
+    class SR,PR,STR api
+    class AF factory
+    class SD,TS,AZ adapter
+    class SS,PS service
+    class SDF,TSF,AZF flow
+    class SITE1,SITE2,SITE3 site
+    class P,C,O domain
+    class STORE store
+    class V api
