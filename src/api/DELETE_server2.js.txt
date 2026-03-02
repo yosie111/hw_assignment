@@ -1,0 +1,1 @@
+DELETE THIS FILE — server2.js is dead code (Bug #5)

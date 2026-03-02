@@ -1,8 +1,13 @@
-// src/domain/cartCalculator.js
+// src/domain/CartCalculator.js
 // Oracle Pattern — independent tax calculation (default: 0%, configurable via config.js)
 // IEEE 754 fix with Math.round
 // (Built in previous session, this is the interface stub for Services integration)
 
+// ★ DEFAULT_TAX_RATE = 0 (by design)
+// The Oracle uses the rate from config.js (TAX_RATE env var), NOT this default.
+// This default only applies if no taxRate is passed to calculateCart().
+// Saucedemo uses 8% (set TAX_RATE=0.08 in .env), ToolShop calculates its own.
+// A zero default is safe: it means "no tax" unless explicitly configured.
 const DEFAULT_TAX_RATE = 0;
 const EPSILON = 0.02;
 

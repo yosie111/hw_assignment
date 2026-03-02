@@ -1,53 +1,49 @@
 // src/domain/OrderResult.js
-
-/**
- * OrderResult domain model.
- * Represents the outcome of a purchase automation flow.
- */
+//
+// OrderResult — Factory Function + Object.freeze()
+// Consistent with Product.js, Cart.js, Order.js design pattern.
+//
+// ★ BUG FIX: Converted from Class to Factory Function.
+//   Before: Class with `new`, `this`, mutable properties.
+//   After: createOrderResult() → validated, frozen, immutable.
 
 const VALID_STATUSES = ['completed', 'failed'];
 
-class OrderResult {
-  constructor({ status, lastStep, requestId, screenshotPath, error, cartVerification }) {
-    if (!status || !VALID_STATUSES.includes(status)) {
-      throw new Error(`OrderResult status must be one of: ${VALID_STATUSES.join(', ')}`);
-    }
-    if (!requestId || typeof requestId !== 'string') {
-      throw new Error('OrderResult requestId is required');
-    }
-
-    this.status = status;
-    this.lastStep = lastStep || null;
-    this.requestId = requestId;
-    this.screenshotPath = screenshotPath || null;
-    this.error = error || null;
-    this.cartVerification = cartVerification || null; // ★ G4
+/**
+ * Create an immutable OrderResult domain object.
+ *
+ * @param {Object} data
+ * @param {string}  data.status           - 'completed' | 'failed'
+ * @param {string}  data.requestId        - UUID of the automation run
+ * @param {string}  [data.lastStep]       - Last step reached
+ * @param {string}  [data.screenshotPath] - Path to proof screenshot
+ * @param {string}  [data.error]          - Error message if failed
+ * @param {Object}  [data.cartVerification] - Oracle cart match result
+ * @returns {Object} Frozen OrderResult
+ * @throws {Error} if status or requestId invalid
+ */
+function createOrderResult({ status, lastStep, requestId, screenshotPath, error, cartVerification }) {
+  if (!status || !VALID_STATUSES.includes(status)) {
+    throw new Error(`OrderResult status must be one of: ${VALID_STATUSES.join(', ')}`);
+  }
+  if (!requestId || typeof requestId !== 'string') {
+    throw new Error('OrderResult requestId is required');
   }
 
-  /**
-   * Factory method.
-   * @param {Object} data
-   * @returns {OrderResult}
-   */
-  static create(data) {
-    return new OrderResult(data);
-  }
-
-  get isSuccess() {
-    return this.status === 'completed';
-  }
-
-  toJSON() {
-    const json = {
-      status: this.status,
-      lastStep: this.lastStep,
-      requestId: this.requestId,
-      screenshotPath: this.screenshotPath,
-    };
-    if (this.error) json.error = this.error;
-    if (this.cartVerification) json.cartVerification = this.cartVerification;
-    return json;
-  }
+  return Object.freeze({
+    status,
+    lastStep: lastStep || null,
+    requestId,
+    screenshotPath: screenshotPath || null,
+    error: error || null,
+    cartVerification: cartVerification || null,
+    isSuccess: status === 'completed',
+  });
 }
 
-module.exports = { OrderResult };
+// ★ Backward-compatible: OrderResult.create() still works
+const OrderResult = {
+  create: createOrderResult,
+};
+
+module.exports = { OrderResult, createOrderResult };

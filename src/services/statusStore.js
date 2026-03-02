@@ -91,11 +91,14 @@ function fail(requestId, errorMessage) {
 
 /**
  * Get status entry by requestId.
+ * ★ Returns a deep copy to prevent external mutation of internal state.
  * @param {string} requestId
  * @returns {Object|null}
  */
 function get(requestId) {
-  return store.get(requestId) || null;
+  const entry = store.get(requestId);
+  if (!entry) return null;
+  return JSON.parse(JSON.stringify(entry));
 }
 
 /**

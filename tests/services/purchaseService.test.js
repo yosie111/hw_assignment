@@ -357,7 +357,7 @@ describe('purchaseService', () => {
       expect(order.createdAt).toBeDefined();
     });
 
-    test('Order is frozen (immutable)', async () => {
+    test('statusStore returns deep copy — external mutation does not affect store', async () => {
       const requestId = 'test-order-frozen';
       statusStore.create(requestId, 'purchase');
 
@@ -367,8 +367,16 @@ describe('purchaseService', () => {
         requestId,
       });
 
-      const order = statusStore.get(requestId).result;
-      expect(Object.isFrozen(order)).toBe(true);
+      // Get a copy and mutate it
+      const copy = statusStore.get(requestId);
+      const originalStatus = copy.status;
+      copy.status = 'TAMPERED';
+      copy.result.confirmText = 'HACKED';
+
+      // Verify store is unaffected
+      const fresh = statusStore.get(requestId);
+      expect(fresh.status).toBe(originalStatus);
+      expect(fresh.result.confirmText).not.toBe('HACKED');
     });
   });
 

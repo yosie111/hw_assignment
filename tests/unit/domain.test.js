@@ -78,4 +78,18 @@ describe('OrderResult', () => {
     expect(() => OrderResult.create({ status: 'pending', requestId: 'r1' })).toThrow('status');
     expect(() => OrderResult.create({ status: '', requestId: 'r1' })).toThrow('status');
   });
+
+  test('isSuccess reflects status', () => {
+    const ok = OrderResult.create({ status: 'completed', requestId: 'r1' });
+    const fail = OrderResult.create({ status: 'failed', requestId: 'r2' });
+    expect(ok.isSuccess).toBe(true);
+    expect(fail.isSuccess).toBe(false);
+  });
+
+  test('result is frozen (immutable)', () => {
+    const result = OrderResult.create({ status: 'completed', requestId: 'r1' });
+    result.status = 'failed'; // silently ignored in non-strict mode
+    expect(result.status).toBe('completed'); // value unchanged
+    expect(Object.isFrozen(result)).toBe(true);
+  });
 });

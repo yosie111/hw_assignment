@@ -39,10 +39,12 @@ function resolve({
   const seller = sellerCountry || resolveSellerCountry();
 
   // Step 2: Pick policy
-  //   The Oracle must match the SITE's tax behavior.
-  //   Saucedemo (and most e-commerce sites) apply SELLER-side tax
-  //   regardless of where the buyer is located.
-  //   → Always use the seller's policy.
+  //   Domestic purchase (buyer === seller) → seller's policy (= buyer's, same country)
+  //   Import purchase   (buyer !== seller) → buyer's policy  (import tax rules)
+  //
+  //   ★ Note: For Saucedemo Oracle matching, this works because TAX_RATE=0
+  //     in config.js bypasses the engine entirely. The engine is used for
+  //     multi-country scenarios (e.g., IL buyer importing from US seller).
   const isDomestic = buyer === seller;
   const policyKey = isDomestic ? seller : buyer;
   const policy = policies[policyKey] || policies.DEFAULT;

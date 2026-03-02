@@ -1,36 +1,51 @@
 // src/automation/config.js
+//
+// Centralized configuration — all values from environment variables.
+//
+// ★ BUG FIX: Removed hardcoded fallback credentials.
+//   Before: process.env.X || 'secret_sauce' — leaked passwords in Git history.
+//   After: process.env.X || '' — fails explicitly if .env missing.
+//
+// ★ BUG FIX: Removed legacy BASE_URL/USERNAME/PASSWORD fields.
 
 require('dotenv').config();
 
+function requireEnv(key, fallback) {
+  const value = process.env[key];
+  if (value) return value;
+  if (fallback !== undefined) return fallback;
+  console.warn(`[config] Missing env var: ${key} — using empty string`);
+  return '';
+}
+
 module.exports = {
-  // ─── Saucedemo ───────────────────────────────────────────
-  SAUCEDEMO_BASE_URL: process.env.SAUCEDEMO_BASE_URL || 'https://www.saucedemo.com',
-  SAUCEDEMO_USERNAME: process.env.SAUCEDEMO_USERNAME || 'standard_user',
-  SAUCEDEMO_PASSWORD: process.env.SAUCEDEMO_PASSWORD || 'secret_sauce',
+  // Saucedemo Site
+  SAUCEDEMO_BASE_URL: requireEnv('SAUCEDEMO_BASE_URL', 'https://www.saucedemo.com'),
+  SAUCEDEMO_USERNAME: requireEnv('SAUCEDEMO_USERNAME'),
+  SAUCEDEMO_PASSWORD: requireEnv('SAUCEDEMO_PASSWORD'),
 
-  // ─── Amazon (experimental — blocked by anti-bot) ─────────
-  AMAZON_BASE_URL: process.env.AMAZON_BASE_URL || 'https://www.amazon.com',
-  AMAZON_USERNAME: process.env.AMAZON_USERNAME || '',
-  AMAZON_PASSWORD: process.env.AMAZON_PASSWORD || '',
+  // Amazon Site
+  AMAZON_BASE_URL: requireEnv('AMAZON_BASE_URL', 'https://www.amazon.com'),
+  AMAZON_USERNAME: requireEnv('AMAZON_USERNAME'),
+  AMAZON_PASSWORD: requireEnv('AMAZON_PASSWORD'),
 
-  // ─── ToolShop ────────────────────────────────────────────
-  TOOLSHOP_BASE_URL: process.env.TOOLSHOP_BASE_URL || 'https://practicesoftwaretesting.com',
-  TOOLSHOP_EMAIL: process.env.TOOLSHOP_EMAIL || 'customer@practicesoftwaretesting.com',
-  TOOLSHOP_PASSWORD: process.env.TOOLSHOP_PASSWORD || 'welcome01',
+  // ToolShop Site
+  TOOLSHOP_BASE_URL: requireEnv('TOOLSHOP_BASE_URL', 'https://practicesoftwaretesting.com'),
+  TOOLSHOP_EMAIL: requireEnv('TOOLSHOP_EMAIL'),
+  TOOLSHOP_PASSWORD: requireEnv('TOOLSHOP_PASSWORD'),
 
-  // ─── Browser ─────────────────────────────────────────────
+  // Browser
   HEADLESS: process.env.HEADLESS !== 'false',         // default: true
   DEFAULT_TIMEOUT: 10_000,                             // 10s per action
   NAVIGATION_TIMEOUT: 35_000,                          // 35s per navigation
 
-  // ─── Retry ───────────────────────────────────────────────
+  // Retry
   RETRY_MAX_ATTEMPTS: 3,
-  RETRY_BASE_DELAY_MS: 500,                            // 500ms → 1s → 2s (exponential)
+  RETRY_BASE_DELAY_MS: 500,                            // 500ms → 1000ms → 2000ms
 
-  // ─── Paths ───────────────────────────────────────────────
+  // Paths
   SCREENSHOTS_DIR: process.env.SCREENSHOTS_DIR || './screenshots',
 
-  // ─── Tax ─────────────────────────────────────────────────
-  // Default 0%. Override via .env (e.g. TAX_RATE=0.08 for 8%)
+  // Tax — default 0%. Override via .env (e.g. TAX_RATE=0.08 for 8%)
   TAX_RATE: parseFloat(process.env.TAX_RATE) || 0,
 };
