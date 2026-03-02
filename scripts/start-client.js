@@ -1,5 +1,5 @@
 // scripts/start-client.js
-// Finds a free port starting from the default (3000) and starts the React client.
+// Finds a free port starting from the default (3500) and starts the React client.
 
 const net = require('net');
 const { spawn } = require('child_process');

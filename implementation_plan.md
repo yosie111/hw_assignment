@@ -30,7 +30,7 @@ ecommerce-automation/
 | קובץ | תפקיד |
 |------|--------|
 | `package.json` | Dependencies: playwright, dotenv, uuid, express, zod, pino. DevDeps: jest |
-| `.env` | USERNAME, PASSWORD, BASE_URL, HEADLESS |
+| `.env` | SAUCEDEMO_USERNAME, SAUCEDEMO_PASSWORD, SAUCEDEMO_BASE_URL, HEADLESS |
 | `config.js` | טעינת env + קבועים (timeouts, retry, paths) |
 | `Product.js` | Class/factory — id, title, price, currency, url, imageUrl, source |
 | `Cart.js` | items[], addItem(), getTotal(), toJSON() |
@@ -42,7 +42,7 @@ ecommerce-automation/
 npm install
 
 # בדיקה 2: config נטען נכון
-node -e "const c = require('./src/automation/config'); console.log(c.BASE_URL, c.HEADLESS)"
+node -e "const c = require('./src/automation/config'); console.log(c.SAUCEDEMO_BASE_URL, c.HEADLESS)"
 # צפוי: https://www.saucedemo.com true
 
 # בדיקה 3: Domain models — Jest
@@ -368,10 +368,10 @@ AI_USAGE.md
 ```bash
 # בדיקה 5.1: React dev server עולה
 cd client && npm install && npm start
-# צפוי: http://localhost:5173 נפתח
+# צפוי: http://localhost:3500 נפתח
 
 # בדיקה 5.2: E2E ידני — Full flow
-# 1. פתח http://localhost:5173
+# 1. פתח http://localhost:3500
 # 2. הקלד query ריק, maxPrice: 50, לחץ Search
 # 3. ודא: מוצרים מופיעים עם מחיר ותמונה
 # 4. לחץ Buy על מוצר

@@ -95,7 +95,9 @@ async function executeSearch(adapter, { query, filters } = {}) {
     return { requestId, products, recommendedId };
 
   } catch (error) {
-    statusStore.fail(requestId, error.message);
+    statusStore.fail(requestId, error.message, {
+      failedStep: 'search-flow',
+    });
     throw error;
   }
 }

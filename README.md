@@ -98,7 +98,7 @@ npm run dev
 
 # Or separately:
 npm run server   # http://localhost:3000
-npm run client   # http://localhost:3001
+npm run client   # http://localhost:3500
 ```
 
 ## Automation Flow — 10 Required Steps

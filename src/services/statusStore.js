@@ -79,13 +79,18 @@ function complete(requestId, result) {
  * Mark a request as failed.
  * @param {string} requestId
  * @param {string} errorMessage
+ * @param {Object} [options] - optional failure context
+ * @param {string} [options.failedStep] - which step failed
+ * @param {string[]} [options.screenshots] - screenshot paths captured on failure
  */
-function fail(requestId, errorMessage) {
+function fail(requestId, errorMessage, options = {}) {
   const entry = store.get(requestId);
   if (!entry) return;
 
   entry.status = 'failed';
   entry.error = errorMessage;
+  if (options.failedStep) entry.failedStep = options.failedStep;
+  if (options.screenshots) entry.screenshots = options.screenshots;
   entry.updatedAt = new Date().toISOString();
 }
 
@@ -103,10 +108,13 @@ function get(requestId) {
 
 /**
  * Get all active status entries.
+ * ★ Returns deep copies to prevent external mutation (same pattern as get()).
  * @returns {Object[]}
  */
 function getAll() {
-  return Array.from(store.values());
+  return Array.from(store.values()).map(entry =>
+    JSON.parse(JSON.stringify(entry))
+  );
 }
 
 /**

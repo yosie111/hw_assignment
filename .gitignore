@@ -6,6 +6,9 @@ client/node_modules/
 client/dist/
 client/build/
 
+# Generated structure dumps
+project-structure.txt
+
 # IDE
 .idea/
 # Claude

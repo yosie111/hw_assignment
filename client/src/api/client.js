@@ -1,7 +1,7 @@
 // client/src/api/client.js
 //
 // Centralized HTTP client — single point of contact with backend.
-// proxy in package.json handles dev forwarding to :8000.
+// proxy in package.json handles dev forwarding to :3000.
 // In production, Express serves React from same port → '/api' works directly.
 
 import axios from 'axios';

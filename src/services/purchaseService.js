@@ -96,7 +96,10 @@ async function _runPurchase(adapter, { product, shipping, requestId }) {
         steps: result.steps || [],
         cartValidation: null,
       });
-      statusStore.fail(requestId, result.error);
+      statusStore.fail(requestId, result.error, {
+        failedStep: result.steps?.slice(-1)[0]?.step || 'unknown',
+        screenshots: result.screenshotPath ? [result.screenshotPath] : [],
+      });
       return;
     }
 
@@ -167,7 +170,9 @@ async function _runPurchase(adapter, { product, shipping, requestId }) {
     statusStore.complete(requestId, order);
 
   } catch (error) {
-    statusStore.fail(requestId, error.message);
+    statusStore.fail(requestId, error.message, {
+      failedStep: 'purchase-flow',
+    });
   }
 }
 

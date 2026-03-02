@@ -4,7 +4,7 @@
 //
 // Middleware stack:
 //   1. helmet — security headers
-//   2. cors — allow React dev server (port 3000)
+//   2. cors — allow React dev server (port 3500)
 //   3. morgan — request logging
 //   4. express.json — parse JSON bodies
 //   5. API routes (/api/search, /api/purchase, /api/status)
@@ -68,7 +68,7 @@ app.use(errorHandler);
 
 // ─── Start Server (only when run directly, not when imported for tests) ───
 if (require.main === module) {
-  const startPort = parseInt(process.env.PORT, 10) || 8000;
+  const startPort = parseInt(process.env.PORT, 10) || 3000;
 
   function startServer(port) {
     const server = app.listen(port);
