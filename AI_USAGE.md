@@ -1,63 +1,109 @@
-https://notebooklm.google.com/
-שימש להורדת הסרטונים תמלול וסיכום שלהם, גם בעברית ובאנגלית.
+# AI_USAGE.md — שימוש בכלי AI
 
-עיקר הביצוע בוצע על ידי claude.ai.
+## כלי AI ששימשו
 
-קודם תכנון הפרויקט בצורה כללית
+| כלי | שימוש |
+|------|--------|
+| **Claude.ai (Anthropic)** | עיקר הביצוע — תכנון ארכיטקטורה, כתיבת קוד, בדיקות, תיעוד |
+| **Google NotebookLM** | הורדת סרטונים, תמלול וסיכום (עברית + אנגלית) |
+| **Gemini Deep Research** | חקירת הפרויקט, ביקורת על תוכניות Claude |
+| **GitHub Copilot** | השלמות קוד, הוספת adapter לאמזון |
 
+---
 
+## פרומפטים כפי שנכתבו בפועל (5)
 
-סיכום השיחות (מתחילת הפרויקט)
+### Prompt 1 — תכנון ארכיטקטורה
+```
+תכנן ארכיטקטורה לפרויקט אוטומציה של אתר מסחר עם Playwright.
+הדרישה: הפרדה בין 5 שכבות — automation, domain, services, api, ui.
+האתר הראשון הוא saucedemo.com. צריך לתמוך בהוספת אתרים נוספים בעתיד.
+תן מבנה תיקיות + הסבר על כל שכבה.
+```
 
-הפרויקט התנהל בשיחה אחת ארוכה, שעברה את השלבים הבאים:
+### Prompt 2 — כתיבת Flows
+```
+כתוב את שכבת ה-automation עבור saucedemo.com.
+צריך: loginFlow, searchFlow, cartFlow, checkoutFlow.
+כל flow צריך: explicit waits (לא sleep), retry עם backoff לפעולות שבירות,
+screenshots בכל שלב, ו-selectors בקובץ נפרד (single source of truth).
+```
 
-שלב 1 — הגדרת תשתית ותכנון ארכיטקטורה: הגדרת ארכיטקטורת 5 שכבות (UI → API → Services → Domain → Automation) לפי עקרונות Clean Architecture. נבחר Playwright על פני Selenium, גישת bottom-up לבנייה.
+### Prompt 3 — הוספת אתר ToolShop
+```
+אני צריך להוסיף adapter חדש עבור https://practicesoftwaretesting.com.
+הנה הקלטת Playwright של ה-flow המלא (login, search, cart, checkout).
+תנתח את ההקלטה, תזהה את ה-selectors האמיתיים, ותייצר את כל הקבצים:
+selectors.js, flows (login, search, cart, checkout), parser, adapter.
+שים לב: ההקלטה מראה ש-address הוא "street" (לא "address")
+ו-postcode הוא "postal_code" (לא "postcode").
+```
 
-שלב 2 — בניית שכבת Automation: נבנו 14 קבצים כולל browserFactory, selectors, loginFlow, searchFlow, cartFlow, checkoutFlow, וכלי עזר כמו retry, normalizePrice, stepLogger (Observer Pattern), ו-selectProduct (cheapest-first policy). כולל 6 צילומי מסך לכל רכישה. נבנה run\_demo.js כ-PoC שעובד מקצה לקצה.
+### Prompt 4 — Domain Models
+```
+בנה את שכבת ה-Domain: Product, Cart, Order.
+דרישות:
+- Factory Functions (לא classes) — בגלל סריאליזציה ל-JSON
+- Object.freeze על כל אובייקט (Immutability)
+- Cart עם Duplicate Guard
+- Oracle Pattern: cartCalculator מחשב מס באופן עצמאי ומשווה מול DOM
+```
 
-שלב 3 — תכנון ובניית שכבת Domain: נוצרו מודלים Product, Cart, Order באמצעות Factory Functions + Object.freeze (אימוטביליות). פותח ה-"Oracle Pattern" — cartCalculator מחשב מס באופן עצמאי ומשווה מול ערכי DOM עם Epsilon של 0.02. הושגו 115 בדיקות יחידה עוברות.
+### Prompt 5 — ביקורת צולבת (Claude vs Gemini)
+```
+הנה ביקורת של Gemini על התוכנית שלך.
+Gemini טוען ש:
+1. Factory Functions פחות טובים מ-Classes
+2. ה-Oracle pattern מסובך מדי
+3. חסר error handling ב-stepLogger
+תגיב על כל נקודה — קבל או דחה עם הסבר.
+```
 
-שלב 4 — תכנון שכבת Services: נוצרה תוכנית V3 מפורטת ל-statusStore, searchService, purchaseService, כולל Fire-and-Forget pattern (API מחזיר 202 מיד). נכתבו תוכניות גם ל-API ו-UI.
+---
 
-שלב 5 — Handoff: בסוף השיחה הוכן מסמך סיכום מלא ופרומפט פתיחה לשיחה חדשה, לצורך המשך בנייה של Services → API → UI.
+## המלצות AI שגויות או מסוכנות — וכיצד תוקנו
 
+### 1. Selectors שגויים ל-ToolShop
+**AI המליץ:** `[data-test="address"]` ו-`[data-test="postcode"]`
+**האמת (מההקלטה):** `[data-test="street"]` ו-`[data-test="postal_code"]`
+**איך תיקנתי:** הקלטתי את ה-flow ב-Playwright Recorder, חילצתי את ה-selectors האמיתיים, ועדכנתי את selectors.js.
 
+### 2. שימוש ב-waitForTimeout (sleep)
+**AI המליץ:** `await page.waitForTimeout(2000)` אחרי חיפוש.
+**למה זה מסוכן:** sleep קבוע הוא שביר — איטי מדי בסביבה מהירה, מהיר מדי בסביבה איטית.
+**איך תיקנתי:** החלפתי ב-`waitForResponse()` שמחכה לתגובת API:
+```js
+const responsePromise = page.waitForResponse(
+  resp => resp.url().includes('/products') && resp.status() === 200
+);
+await page.locator(S.SEARCH_SUBMIT).click();
+await responsePromise;
+```
 
+### 3. Checkout עם 3 שלבים במקום 4
+**AI הניח:** checkout בן 3 שלבים (address → payment → confirm).
+**האמת:** ToolShop checkout הוא 4 שלבים (sign-in → address → payment → confirm).
+**איך תיקנתי:** בדיקה ידנית באתר + ההקלטה חשפו את Step 1 (Sign In) שה-AI דילג עליו.
 
+### 4. Payment בכרטיס אשראי (מורכב מדי)
+**AI המליץ:** מילוי פרטי כרטיס אשראי (מספר, תוקף, CVV, שם).
+**למה זה מסוכן:** דורש מספר כרטיס תקין, ולידציות מורכבות, ונקודות כשל רבות.
+**איך תיקנתי:** בחרתי "Buy Now Pay Later" — דורש רק בחירת installments, בלי פרטי כרטיס.
 
-gemini היה בשימוש רב ב Deep Research לחקור את הפרויקט ואת הביצוע
+### 5. סיסמאות בקוד (Hardcoded Credentials)
+**AI כתב:** `const password = 'welcome01'` ישירות בקוד.
+**למה זה מסוכן:** סיסמאות בקוד נכנסות ל-Git ונחשפות לכולם.
+**איך תיקנתי:** העברה ל-`.env` + קריאה דרך `config.js`:
+```js
+TOOLSHOP_PASSWORD: process.env.TOOLSHOP_PASSWORD || 'welcome01'
+```
 
-והציע תוענית וביקורת לתוכנית של claude.
+---
 
-לאחר מכן הוצע לקוד להגיב על הביקורת של gemini, כאן קלוד לפעמים קיבל את הביקורת
+## הגנה על סודות (Secrets Protection)
 
-לפעמים הוא סירב והסביר בטעם את סירובו
-
-
-
-
-
-היה שימוש גם בטרמינל לתיקון באגים הקוד
-
-עדיין לא השתמשתי ב Sub-Agents
-
-
-
-GitHub Copilot
-הנידון- שכבת automation על אתר קניון דמו https://www.saucedemo.com/
-להוסיף בשכבת ה automation ספשרות לבחור אתר נוס
-את אתר אמזון https://www.amazon.com/.
-הוסף מסך בחירה באיזה אתר שכבת automation תעבוד
-הוסף את כל הלוגיקה והקבצים לשימוש ב automation על אתר  https://www.amazon.com/
-שים לב להפרדת השכבות
-
-
-
-
-
-
-
-הוספת אתר אמזון נתקלה בקשיים רבים עקב החסימות שמפעילה אמזון נגד בוטים
-
-לא ראיתי חלק מתפקידי ליצור פריצות לאמזון
-
+1. **`.env` ב-`.gitignore`** — קובץ הסיסמאות לא נכנס ל-Git
+2. **`.env.example`** — קובץ דוגמה עם ערכי ברירת מחדל (פרטי אתר דמו — לא סודיים באמת)
+3. **`config.js` כשכבת הפשטה** — הקוד קורא מ-config, לא ישירות מ-env
+4. **אין סיסמאות בלוגים** — stepLogger רושם רק step name + status, לא פרמטרים
+5. **אין סיסמאות ב-screenshots** — צילומי מסך מלבד מסך ה-login

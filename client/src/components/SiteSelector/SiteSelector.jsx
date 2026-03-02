@@ -6,6 +6,7 @@ import styles from './SiteSelector.module.css';
 const SITES = [
   { id: 'saucedemo', name: 'Saucedemo', url: 'https://www.saucedemo.com' },
   { id: 'amazon', name: 'Amazon', url: 'https://www.amazon.com' },
+  { id: 'toolshop', name: 'ToolShop', url: 'https://practicesoftwaretesting.com' },
 ];
 
 export default function SiteSelector({ selectedSite, onSiteChange, disabled }) {

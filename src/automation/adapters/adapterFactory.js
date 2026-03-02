@@ -10,7 +10,7 @@
 
 const { SauceDemoAdapter } = require('./SauceDemoAdapter');
 const { AmazonAdapter } = require('./AmazonAdapter');
-// Future: const { ToolShopAdapter } = require('./ToolShopAdapter');
+const { ToolShopAdapter } = require('./ToolShopAdapter');
 
 /**
  * Registry: site identifier → adapter constructor.
@@ -19,7 +19,7 @@ const { AmazonAdapter } = require('./AmazonAdapter');
 const registry = {
   saucedemo: () => new SauceDemoAdapter(),
   amazon: () => new AmazonAdapter(),
-  // toolshop: () => new ToolShopAdapter(),
+  toolshop: () => new ToolShopAdapter(),
 };
 
 /**

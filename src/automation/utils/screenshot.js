@@ -25,6 +25,19 @@ async function takeScreenshot(page, requestId, step = 'proof') {
 
   await page.screenshot({ path: filepath, fullPage: true });
 
+  // ★ Order confirmation screenshots also go to screenshots/proof/
+  //   This directory is NOT in .gitignore — serves as submission proof.
+  if (step.includes('order-complete') || step.includes('confirmation')) {
+    try {
+      const proofDir = path.join(dir, 'proof');
+      if (!fs.existsSync(proofDir)) {
+        fs.mkdirSync(proofDir, { recursive: true });
+      }
+      const proofPath = path.join(proofDir, filename);
+      fs.copyFileSync(filepath, proofPath);
+    } catch (_) { /* don't fail the flow for proof copy */ }
+  }
+
   return filepath;
 }
 

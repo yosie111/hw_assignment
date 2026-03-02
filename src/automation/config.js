@@ -13,10 +13,15 @@ module.exports = {
   AMAZON_USERNAME: process.env.AMAZON_USERNAME || '',
   AMAZON_PASSWORD: process.env.AMAZON_PASSWORD || '',
 
+  // ToolShop Site
+  TOOLSHOP_BASE_URL: process.env.TOOLSHOP_BASE_URL || 'https://v4.practicesoftwaretesting.com',
+  TOOLSHOP_EMAIL: process.env.TOOLSHOP_EMAIL || 'customer@practicesoftwaretesting.com',
+  TOOLSHOP_PASSWORD: process.env.TOOLSHOP_PASSWORD || 'welcome01',
+
   // Legacy/backward compatibility (defaults to Saucedemo)
-  BASE_URL: process.env.BASE_URL || process.env.SAUCEDEMO_BASE_URL || 'https://www.saucedemo.com',
-  USERNAME: process.env.SITE_USERNAME || process.env.SAUCEDEMO_USERNAME || 'standard_user',
-  PASSWORD: process.env.SITE_PASSWORD || process.env.SAUCEDEMO_PASSWORD || 'secret_sauce',
+  BASE_URL: process.env.BASE_URL ||'https://practicesoftwaretesting.com/',// process.env.SAUCEDEMO_BASE_URL || 'https://www.saucedemo.com',
+  USERNAME: process.env.SITE_USERNAME || 'customer@practicesoftwaretesting.com',// process.env.SAUCEDEMO_USERNAME || 'standard_user',
+  PASSWORD: process.env.SITE_PASSWORD || 'welcome01',// process.env.SAUCEDEMO_PASSWORD || 'secret_sauce',
 
   // Browser
   HEADLESS: process.env.HEADLESS !== 'false',         // default: true
