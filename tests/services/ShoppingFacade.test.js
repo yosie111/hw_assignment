@@ -1,25 +1,16 @@
 // tests/services/ShoppingFacade.test.js
 //
 // Tests the Facade pattern: ShoppingFacade coordinates
-// abstractFactory + searchService + sessionStore + purchaseService
+// factory (injected via DI) + searchService + sessionStore + purchaseService
 // behind a simplified interface.
+//
+// ★ DI: getFactory is injected via constructor — no automation imports in Facade.
 
 jest.mock('../../src/services/searchService', () => ({
   executeSearch: jest.fn(),
 }));
 jest.mock('../../src/services/purchaseService', () => ({
   executePurchase: jest.fn(),
-}));
-
-const mockCreateAdapter = jest.fn(() => ({ name: 'mock-adapter', isAlive: () => true }));
-const mockGetTaxRate = jest.fn(() => 0.08);
-
-jest.mock('../../src/automation/adapters/abstractFactory', () => ({
-  getFactory: jest.fn(() => ({
-    createAdapter: mockCreateAdapter,
-    getTaxRate: mockGetTaxRate,
-  })),
-  getAvailableSites: jest.fn(() => ['saucedemo']),
 }));
 jest.mock('../../src/services/sessionStore', () => ({
   store: jest.fn(() => 'session-123'),
@@ -31,8 +22,15 @@ jest.mock('../../src/services/sessionStore', () => ({
 const { ShoppingFacade } = require('../../src/services/ShoppingFacade');
 const { executeSearch } = require('../../src/services/searchService');
 const { executePurchase } = require('../../src/services/purchaseService');
-const { getFactory } = require('../../src/automation/adapters/abstractFactory');
 const sessionStore = require('../../src/services/sessionStore');
+
+// ★ Mock factory injected via DI (not via jest.mock of automation)
+const mockCreateAdapter = jest.fn(() => ({ name: 'mock-adapter', isAlive: () => true }));
+const mockGetTaxRate = jest.fn(() => 0.08);
+const mockGetFactory = jest.fn(() => ({
+  createAdapter: mockCreateAdapter,
+  getTaxRate: mockGetTaxRate,
+}));
 
 describe('ShoppingFacade (Facade Pattern)', () => {
   let facade;
@@ -41,7 +39,22 @@ describe('ShoppingFacade (Facade Pattern)', () => {
     jest.clearAllMocks();
     mockCreateAdapter.mockReturnValue({ name: 'mock-adapter', isAlive: () => true });
     mockGetTaxRate.mockReturnValue(0.08);
-    facade = new ShoppingFacade();
+    facade = new ShoppingFacade(mockGetFactory);
+  });
+
+  // ═══ Constructor DI validation ═══
+  describe('constructor', () => {
+    test('throws if getFactory is not provided', () => {
+      expect(() => new ShoppingFacade()).toThrow('ShoppingFacade requires a getFactory function');
+    });
+
+    test('throws if getFactory is not a function', () => {
+      expect(() => new ShoppingFacade('not-a-function')).toThrow('ShoppingFacade requires a getFactory function');
+    });
+
+    test('accepts a valid getFactory function', () => {
+      expect(() => new ShoppingFacade(mockGetFactory)).not.toThrow();
+    });
   });
 
   // ═══ search() ═══
@@ -55,8 +68,8 @@ describe('ShoppingFacade (Facade Pattern)', () => {
 
       const result = await facade.search('saucedemo', { query: 'test', filters: {} });
 
-      // 1. Got factory for site
-      expect(getFactory).toHaveBeenCalledWith('saucedemo');
+      // 1. Got factory for site (via injected getFactory)
+      expect(mockGetFactory).toHaveBeenCalledWith('saucedemo');
       // 2. Created adapter via factory
       expect(mockCreateAdapter).toHaveBeenCalled();
       // 3. Passed adapter + taxRate to search

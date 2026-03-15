@@ -29,7 +29,7 @@
 
 const { randomUUID } = require('crypto');
 const { createOrder } = require('../domain/Order');
-const { calculateCart, EPSILON } = require('../domain/CartCalculator');
+const { calculateCart, EPSILON, parsePrice } = require('../domain/CartCalculator');
 const statusStore = require('./statusStore');
 
 /**
@@ -106,7 +106,7 @@ async function _runPurchase(adapter, { product, shipping, requestId, taxRate = 0
       const calc = calculateCart([product], { taxRate });
 
       // Parse site values (subtotal, tax, total) from DOM text
-      const parsePrice = (text) => parseFloat((text || '').replace(/[^0-9.]/g, ''));
+      // ★ Uses shared parsePrice from CartCalculator (no more inline lambda duplication)
       const siteSubtotal = parsePrice(result.subtotalText);
       const siteTax = parsePrice(result.taxText);
       const siteTotal = parsePrice(result.totalText);

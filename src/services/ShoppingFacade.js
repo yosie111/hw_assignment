@@ -2,14 +2,14 @@
 //
 // Facade Pattern — simplified interface over the complex subsystem.
 //
-// ★ Layer separation fix:
-//   Before: services imported TAX_RATE from automation/config.js (layer violation).
-//   After:  Facade gets taxRate from AbstractFactory.getTaxRate() and passes
-//           it as a parameter to services. Services never import site config.
+// ★ Layer separation (DI):
+//   The Facade receives getFactory via constructor injection.
+//   It never imports from the automation layer directly.
+//   The API layer (routes) creates the Facade with the concrete factory.
 //
-//   AbstractFactory.getTaxRate() → Facade → service({ taxRate }) → CartCalculator
+//   API: new ShoppingFacade(getFactory) → Facade → service({ taxRate }) → CartCalculator
 //
-//   Each site defines its own tax rate:
+//   Each site defines its own tax rate via its factory:
 //     Saucedemo → 8%  (site charges 8% sales tax)
 //     ToolShop  → 0%  (site calculates tax server-side)
 //     Amazon    → 0%  (tax varies by state, site handles it)
@@ -17,9 +17,20 @@
 const { executeSearch } = require('./searchService');
 const { executePurchase } = require('./purchaseService');
 const sessionStore = require('./sessionStore');
-const { getFactory, getAvailableSites } = require('../automation/adapters/abstractFactory');
 
 class ShoppingFacade {
+  /**
+   * @param {Function} getFactory - Injected factory resolver: (site) => SiteAbstractFactory
+   *   Provided by the API layer from automation/adapters/abstractFactory.
+   *   This keeps the service layer decoupled from automation internals.
+   */
+  constructor(getFactory) {
+    if (typeof getFactory !== 'function') {
+      throw new Error('ShoppingFacade requires a getFactory function (Dependency Injection)');
+    }
+    this._getFactory = getFactory;
+  }
+
   /**
    * Search for products on a site.
    *
@@ -28,7 +39,7 @@ class ShoppingFacade {
    * @returns {Promise<{ requestId, products, recommendedId, sessionId, taxRate }>}
    */
   async search(site, { query, filters } = {}) {
-    const factory = getFactory(site);
+    const factory = this._getFactory(site);
     const adapter = factory.createAdapter();
     const taxRate = factory.getTaxRate();
 
@@ -51,7 +62,7 @@ class ShoppingFacade {
    * @returns {Promise<{ requestId }>}
    */
   async purchase({ site, sessionId, product, shipping }) {
-    const factory = getFactory(site);
+    const factory = this._getFactory(site);
     const taxRate = factory.getTaxRate();
 
     let adapter = sessionStore.consume(sessionId);
@@ -64,4 +75,4 @@ class ShoppingFacade {
   }
 }
 
-module.exports = { ShoppingFacade, getAvailableSites };
+module.exports = { ShoppingFacade };

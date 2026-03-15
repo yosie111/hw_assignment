@@ -1,6 +1,9 @@
 // tests/api/purchaseRoutes.test.js
 //
 // ★ Facade-aware: mocks ShoppingFacade.
+//
+// ★ DI: ShoppingFacade now takes getFactory in constructor.
+//   We mock the constructor to return our mockFacade directly.
 
 jest.mock('../../src/services/ShoppingFacade', () => {
   const mockFacade = {
@@ -10,10 +13,10 @@ jest.mock('../../src/services/ShoppingFacade', () => {
   return {
     ShoppingFacade: jest.fn(() => mockFacade),
     _mockFacade: mockFacade,
-    getAvailableSites: jest.fn(() => ['saucedemo', 'amazon', 'toolshop']),
   };
 });
 
+// Mock abstractFactory for validators.js (reads available sites at import time)
 jest.mock('../../src/automation/adapters/abstractFactory', () => ({
   getFactory: jest.fn(),
   getAvailableSites: jest.fn(() => ['saucedemo', 'amazon', 'toolshop']),
