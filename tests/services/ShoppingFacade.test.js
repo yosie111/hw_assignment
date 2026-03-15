@@ -1,7 +1,7 @@
 // tests/services/ShoppingFacade.test.js
 //
 // Tests the Facade pattern: ShoppingFacade coordinates
-// adapterFactory + searchService + sessionStore + purchaseService
+// abstractFactory + searchService + sessionStore + purchaseService
 // behind a simplified interface.
 
 jest.mock('../../src/services/searchService', () => ({
@@ -10,8 +10,15 @@ jest.mock('../../src/services/searchService', () => ({
 jest.mock('../../src/services/purchaseService', () => ({
   executePurchase: jest.fn(),
 }));
-jest.mock('../../src/automation/adapters/adapterFactory', () => ({
-  createAdapter: jest.fn(() => ({ name: 'mock-adapter', isAlive: () => true })),
+
+const mockCreateAdapter = jest.fn(() => ({ name: 'mock-adapter', isAlive: () => true }));
+const mockGetTaxRate = jest.fn(() => 0.08);
+
+jest.mock('../../src/automation/adapters/abstractFactory', () => ({
+  getFactory: jest.fn(() => ({
+    createAdapter: mockCreateAdapter,
+    getTaxRate: mockGetTaxRate,
+  })),
   getAvailableSites: jest.fn(() => ['saucedemo']),
 }));
 jest.mock('../../src/services/sessionStore', () => ({
@@ -24,7 +31,7 @@ jest.mock('../../src/services/sessionStore', () => ({
 const { ShoppingFacade } = require('../../src/services/ShoppingFacade');
 const { executeSearch } = require('../../src/services/searchService');
 const { executePurchase } = require('../../src/services/purchaseService');
-const { createAdapter } = require('../../src/automation/adapters/adapterFactory');
+const { getFactory } = require('../../src/automation/adapters/abstractFactory');
 const sessionStore = require('../../src/services/sessionStore');
 
 describe('ShoppingFacade (Facade Pattern)', () => {
@@ -32,12 +39,14 @@ describe('ShoppingFacade (Facade Pattern)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCreateAdapter.mockReturnValue({ name: 'mock-adapter', isAlive: () => true });
+    mockGetTaxRate.mockReturnValue(0.08);
     facade = new ShoppingFacade();
   });
 
   // ═══ search() ═══
   describe('search()', () => {
-    test('coordinates: createAdapter → executeSearch → sessionStore.store', async () => {
+    test('coordinates: getFactory → createAdapter → executeSearch → sessionStore.store', async () => {
       executeSearch.mockResolvedValue({
         requestId: 'req-1',
         products: [{ id: '1', title: 'P', price: 10 }],
@@ -46,21 +55,24 @@ describe('ShoppingFacade (Facade Pattern)', () => {
 
       const result = await facade.search('saucedemo', { query: 'test', filters: {} });
 
-      // 1. Created adapter
-      expect(createAdapter).toHaveBeenCalledWith('saucedemo');
-      // 2. Passed adapter to search
+      // 1. Got factory for site
+      expect(getFactory).toHaveBeenCalledWith('saucedemo');
+      // 2. Created adapter via factory
+      expect(mockCreateAdapter).toHaveBeenCalled();
+      // 3. Passed adapter + taxRate to search
       expect(executeSearch).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'mock-adapter' }),
-        { query: 'test', filters: {} }
+        { query: 'test', filters: {}, taxRate: 0.08 }
       );
-      // 3. Stored adapter in session
+      // 4. Stored adapter in session
       expect(sessionStore.store).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'mock-adapter' })
       );
-      // 4. Returned combined result
+      // 5. Returned combined result
       expect(result.requestId).toBe('req-1');
       expect(result.products).toHaveLength(1);
       expect(result.sessionId).toBe('session-123');
+      expect(result.taxRate).toBe(0.08);
     });
 
     test('defaults query and filters', async () => {
@@ -70,7 +82,7 @@ describe('ShoppingFacade (Facade Pattern)', () => {
 
       expect(executeSearch).toHaveBeenCalledWith(
         expect.anything(),
-        { query: undefined, filters: undefined }
+        { query: undefined, filters: undefined, taxRate: 0.08 }
       );
     });
   });
@@ -89,8 +101,8 @@ describe('ShoppingFacade (Facade Pattern)', () => {
 
       // Used session adapter, NOT factory
       expect(sessionStore.consume).toHaveBeenCalledWith('sess-1');
-      expect(createAdapter).not.toHaveBeenCalled();
-      expect(executePurchase).toHaveBeenCalledWith(sessionAdapter, { product, shipping });
+      expect(mockCreateAdapter).not.toHaveBeenCalled();
+      expect(executePurchase).toHaveBeenCalledWith(sessionAdapter, { product, shipping, taxRate: 0.08 });
     });
 
     test('falls back to createAdapter when no session', async () => {
@@ -99,10 +111,10 @@ describe('ShoppingFacade (Facade Pattern)', () => {
 
       await facade.purchase({ site: 'saucedemo', product, shipping });
 
-      expect(createAdapter).toHaveBeenCalledWith('saucedemo');
+      expect(mockCreateAdapter).toHaveBeenCalled();
       expect(executePurchase).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'mock-adapter' }),
-        { product, shipping }
+        { product, shipping, taxRate: 0.08 }
       );
     });
 
@@ -114,7 +126,7 @@ describe('ShoppingFacade (Facade Pattern)', () => {
       await facade.purchase({ site: 'saucedemo', sessionId: 'expired', product, shipping });
 
       // Dead adapter → fallback to factory
-      expect(createAdapter).toHaveBeenCalledWith('saucedemo');
+      expect(mockCreateAdapter).toHaveBeenCalled();
     });
   });
 
@@ -125,9 +137,9 @@ describe('ShoppingFacade (Facade Pattern)', () => {
 
       const result = await facade.search('saucedemo', { query: '' });
 
-      // Caller only sees: requestId, products, recommendedId, sessionId
+      // Caller only sees: requestId, products, recommendedId, sessionId, taxRate
       expect(Object.keys(result).sort()).toEqual(
-        ['products', 'recommendedId', 'requestId', 'sessionId']
+        ['products', 'recommendedId', 'requestId', 'sessionId', 'taxRate']
       );
     });
 

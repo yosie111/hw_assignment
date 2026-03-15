@@ -169,6 +169,16 @@ async function _runPurchase(adapter, { product, shipping, requestId, taxRate = 0
     statusStore.fail(requestId, error.message, {
       failedStep: 'purchase-flow',
     });
+  } finally {
+    // ★ Bug fix: always close the adapter's browser after purchase to prevent resource leaks.
+    //   Before this fix, browser instances were never released after purchase completed.
+    try {
+      if (adapter && typeof adapter.close === 'function') {
+        await adapter.close();
+      }
+    } catch (closeErr) {
+      console.warn(`[${requestId}] Error closing adapter after purchase: ${closeErr.message}`);
+    }
   }
 }
 

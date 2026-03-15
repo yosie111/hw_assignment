@@ -8,14 +8,12 @@ jest.mock('../../src/services/ShoppingFacade', () => {
     search: jest.fn(),
     purchase: jest.fn(),
   };
-  return { ShoppingFacade: jest.fn(() => mockFacade), _mockFacade: mockFacade };
+  return {
+    ShoppingFacade: jest.fn(() => mockFacade),
+    _mockFacade: mockFacade,
+    getAvailableSites: jest.fn(() => ['saucedemo', 'amazon', 'toolshop']),
+  };
 });
-
-// Also mock adapterFactory for validators.js (it reads available sites at import)
-jest.mock('../../src/automation/adapters/abstractFactory', () => ({
-  getFactory: jest.fn(),
-  getAvailableSites: jest.fn(() => ['saucedemo', 'amazon', 'toolshop']),
-}));
 
 const request = require('supertest');
 const app = require('../../src/api/server');

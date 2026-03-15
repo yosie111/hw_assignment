@@ -25,7 +25,7 @@
 const { randomUUID } = require('crypto');
 const { createProduct } = require('../domain/Product');
 const { calculateCart } = require('../domain/CartCalculator');
-const { selectProduct } = require('../automation/policies/selectProduct');
+const { selectProduct } = require('../domain/selectProduct');
 const statusStore = require('./statusStore');
 
 /**

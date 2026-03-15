@@ -17,7 +17,7 @@
 const { executeSearch } = require('./searchService');
 const { executePurchase } = require('./purchaseService');
 const sessionStore = require('./sessionStore');
-const { getFactory } = require('../automation/adapters/abstractFactory');
+const { getFactory, getAvailableSites } = require('../automation/adapters/abstractFactory');
 
 class ShoppingFacade {
   /**
@@ -64,4 +64,4 @@ class ShoppingFacade {
   }
 }
 
-module.exports = { ShoppingFacade };
+module.exports = { ShoppingFacade, getAvailableSites };

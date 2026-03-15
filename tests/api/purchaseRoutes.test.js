@@ -7,7 +7,11 @@ jest.mock('../../src/services/ShoppingFacade', () => {
     search: jest.fn(),
     purchase: jest.fn(),
   };
-  return { ShoppingFacade: jest.fn(() => mockFacade), _mockFacade: mockFacade };
+  return {
+    ShoppingFacade: jest.fn(() => mockFacade),
+    _mockFacade: mockFacade,
+    getAvailableSites: jest.fn(() => ['saucedemo', 'amazon', 'toolshop']),
+  };
 });
 
 jest.mock('../../src/automation/adapters/abstractFactory', () => ({

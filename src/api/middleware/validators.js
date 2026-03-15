@@ -12,7 +12,7 @@
 //     or returns 400 with structured error details on failure.
 
 const { z } = require('zod');
-const { getAvailableSites } = require('../../automation/adapters/adapterFactory');
+const { getAvailableSites } = require('../../services/ShoppingFacade');
 
 // ★ Dynamic site enum — driven by adapter registry
 const availableSites = getAvailableSites();
