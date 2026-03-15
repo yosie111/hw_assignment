@@ -154,11 +154,18 @@ describe('E2E — Full Purchase Flow (Search → Cart → Checkout → Success)'
   // Covers: ALL 10 automation steps + screenshot proof
   // ─────────────────────────────────────────────────────────────────
   test('Steps 1-10: Full purchase flow produces confirmation screenshot', async () => {
+    // Reset session so OpenBrowser + Login are captured by this test's collector
+    // (previous tests in the suite may have already opened the browser)
+    await adapter.close();
+
     // ── Phase 1: Search ──
+    const { steps, onStep } = createStepCollector();
+
     const products = await adapter.search({
       query: '',
       filters: { maxPrice: 20 },
       requestId: 'e2e-purchase-search',
+      onStep,
     });
     expect(products.length).toBeGreaterThan(0);
 
@@ -167,7 +174,6 @@ describe('E2E — Full Purchase Flow (Search → Cart → Checkout → Success)'
     console.log(`  ► Selected product: "${selected.title}" @ $${selected.price}`);
 
     // ── Phase 2: Purchase (Cart → Checkout → Confirm) ──
-    const { steps, onStep } = createStepCollector();
 
     const result = await adapter.purchase({
       productTitle: selected.title,

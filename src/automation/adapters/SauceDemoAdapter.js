@@ -97,6 +97,9 @@ class SauceDemoAdapter extends SiteAdapter {
     try {
       const page = await this._ensureBrowser(logger);
 
+      // Ensure we're on the catalog page (handles session reuse after purchase)
+      await this._flows.navigateToCatalog(page);
+
       // ★ Bridge: delegate search to the Implementor
       const products = await logger.runStep('SearchAndScrape', () =>
         this._flows.search(page, { query, filters })

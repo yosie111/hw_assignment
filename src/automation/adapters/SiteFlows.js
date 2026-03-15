@@ -1,44 +1,30 @@
 // src/automation/adapters/SiteFlows.js
 //
-// Bridge Pattern — Implementor interface.
+// Bridge Pattern — Implementor hierarchy.
 //
-// Chapter 12 mapping:
-//   Abstraction    = SiteAdapter (orchestrates workflow: open → login → search/purchase → close)
-//   Implementor    = SiteFlows (this class — the interface for site-specific flow logic)
-//   ConcreteImpA   = SauceDemoFlows (saucedemo-specific DOM interactions)
-//   ConcreteImpB   = ToolShopFlows  (toolshop-specific DOM interactions)
+// SiteFlows defines what each site must do (login, search, addToCart, checkout).
+// Concrete implementations (SauceDemoFlows, ToolShopFlows) know HOW to do it.
+// SiteAdapter (Abstraction) delegates to SiteFlows (Implementor).
 //
-// Why Bridge here:
-//   SiteAdapter defines WHAT happens (open browser → login → search → close).
-//   SiteFlows defines HOW it happens (which selectors, which URL, which form fields).
-//
-//   Without the Bridge, each adapter hardcodes imports to its site's flows.
-//   With the Bridge, the adapter receives a SiteFlows object via the constructor.
-//   This means:
-//     - The adapter's orchestration logic can be reused across sites
-//     - A new site only needs a new SiteFlows implementation (no new adapter class)
-//     - Tests can inject mock flows without touching Playwright
+// ★ IMPROVEMENT (v2):
+//   - ToolShopFlows.login now exposes registerAccount as a visible step
+//     so it appears in statusStore / UI progress trace.
 
-/**
- * SiteFlows — Implementor interface for site-specific browser interactions.
- *
- * Each method receives a Playwright page and site-specific params,
- * and performs the actual DOM manipulation for that step.
- *
- * @abstract
- */
+// ─── Abstract Implementor ───
+
 class SiteFlows {
   /**
-   * @param {Object} siteConfig — credentials, URLs, etc. from Abstract Factory
+   * @param {Object} config - Site-specific configuration
+   * @throws {Error} If instantiated directly (abstract class guard)
    */
-  constructor(siteConfig = {}) {
+  constructor(config = {}) {
     if (new.target === SiteFlows) {
-      throw new Error('SiteFlows is abstract — use a concrete implementation');
+      throw new Error('SiteFlows is abstract — use a concrete subclass');
     }
-    this._config = siteConfig;
+    this._config = config;
   }
 
-  /** Site name for logging */
+  /** @returns {string} Site identifier */
   get siteName() {
     throw new Error('SiteFlows.siteName must be implemented');
   }
@@ -63,10 +49,10 @@ class SiteFlows {
   }
 
   /**
-   * Add a product to the cart.
+   * Add a product to cart.
    * @param {import('playwright').Page} page
    * @param {{ title: string, requestId: string }} params
-   * @returns {Promise<{ itemCount: number, screenshots: string[] }>}
+   * @returns {Promise<CartResult>}
    */
   async addToCart(page, params) {
     throw new Error(`${this.siteName}: addToCart() not implemented`);
@@ -141,14 +127,55 @@ class ToolShopFlows extends SiteFlows {
     return 'toolshop';
   }
 
-  async login(page) {
+  /**
+   * Login to ToolShop.
+   *
+   * ★ This method now supports an optional stepLogger parameter.
+   *    When provided (by the adapter), the Register step becomes visible
+   *    in the status API and UI progress trace.
+   *
+   *    If stepLogger is NOT provided (backward compatible), login works
+   *    as before — registerAccount is called internally by loginFlow.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Object} [options]
+   * @param {Object} [options.stepLogger] - Optional stepLogger for progress tracking
+   */
+  async login(page, options = {}) {
     const { login } = require('../sites/toolshop/flows/loginFlow');
-    await login(page, {
+    const { registerAccount } = require('../sites/toolshop/flows/registerFlow');
+    const { stepLogger } = options;
+
+    const creds = {
       email:    this._config.email,
       password: this._config.password,
       baseUrl:  this._config.baseUrl,
       apiUrl:   this._config.apiUrl,
-    });
+    };
+
+    if (stepLogger && creds.apiUrl) {
+      // ★ Register as a visible step in status/UI
+      await stepLogger.runStep('Register', async () => {
+        const result = await registerAccount({
+          email: creds.email,
+          password: creds.password,
+          apiUrl: creds.apiUrl,
+        });
+        if (!result.success) {
+          console.warn(
+            `[ToolShopFlows] ⚠ Registration failed (${result.error}). ` +
+            `Attempting login anyway.`
+          );
+        }
+        return result;
+      });
+
+      // Login WITHOUT auto-register (we already did it above)
+      await login(page, { ...creds, apiUrl: undefined });
+    } else {
+      // Backward compatible: loginFlow handles registration internally
+      await login(page, creds);
+    }
   }
 
   async search(page, { query, filters }) {
