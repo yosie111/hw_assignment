@@ -5,12 +5,16 @@
 // ★ Facade Pattern: route delegates all coordination to ShoppingFacade.
 //   The route only does: validate → facade.search() → respond.
 //   It never touches adapters, session store, or services directly.
+//
+// ★ DI: route injects getFactory from automation into the Facade.
+//   This keeps the service layer decoupled from automation internals.
 
 const router = require('express').Router();
 const { ShoppingFacade } = require('../../services/ShoppingFacade');
+const { getFactory } = require('../../automation/adapters/abstractFactory');
 const { searchSchema, validate } = require('../middleware/validators');
 
-const facade = new ShoppingFacade();
+const facade = new ShoppingFacade(getFactory);
 
 /**
  * POST /api/search

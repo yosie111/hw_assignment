@@ -1,6 +1,6 @@
 // tests/domain/cartCalculator.test.js
 
-const { calculateCart, validateCartTotal, DEFAULT_TAX_RATE } = require('../../src/domain/CartCalculator');
+const { calculateCart, validateCartTotal, parsePrice, DEFAULT_TAX_RATE } = require('../../src/domain/CartCalculator');
 
 describe('CartCalculator (Oracle)', () => {
   test('DEFAULT_TAX_RATE exported = 0', () => {
@@ -124,5 +124,37 @@ describe('validateCartTotal (Oracle Validation)', () => {
 
   test('parse "Total: $51.81" → match', () => {
     expect(validateCartTotal(51.81, 'Total: $51.81').match).toBe(true);
+  });
+});
+
+describe('parsePrice (DOM text → number)', () => {
+  test('parses "Item total: $7.99" → 7.99', () => {
+    expect(parsePrice('Item total: $7.99')).toBe(7.99);
+  });
+
+  test('parses "Tax: $0.64" → 0.64', () => {
+    expect(parsePrice('Tax: $0.64')).toBe(0.64);
+  });
+
+  test('parses "Total: $8.63" → 8.63', () => {
+    expect(parsePrice('Total: $8.63')).toBe(8.63);
+  });
+
+  test('parses "$8.63" → 8.63', () => {
+    expect(parsePrice('$8.63')).toBe(8.63);
+  });
+
+  test('parses "8.63" → 8.63', () => {
+    expect(parsePrice('8.63')).toBe(8.63);
+  });
+
+  test('returns NaN for null/undefined/empty', () => {
+    expect(isNaN(parsePrice(null))).toBe(true);
+    expect(isNaN(parsePrice(undefined))).toBe(true);
+    expect(isNaN(parsePrice(''))).toBe(true);
+  });
+
+  test('parses "Tax: $0.00" → 0', () => {
+    expect(parsePrice('Tax: $0.00')).toBe(0);
   });
 });

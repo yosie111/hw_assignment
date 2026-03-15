@@ -2,7 +2,9 @@
 //
 // Zod schemas for request validation + Express middleware factory.
 //
-// ★ DI Change: site enum is built dynamically from adapterFactory.
+// ★ Layer separation: site enum is built dynamically from abstractFactory.
+//   The API layer is the boundary layer — it's allowed to bridge to automation
+//   for configuration (available sites). The service layer stays decoupled.
 //   When a new adapter is registered, validators automatically accept it.
 //
 // Design:
@@ -12,7 +14,7 @@
 //     or returns 400 with structured error details on failure.
 
 const { z } = require('zod');
-const { getAvailableSites } = require('../../automation/adapters/adapterFactory');
+const { getAvailableSites } = require('../../automation/adapters/abstractFactory');
 
 // ★ Dynamic site enum — driven by adapter registry
 const availableSites = getAvailableSites();

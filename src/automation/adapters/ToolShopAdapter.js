@@ -135,9 +135,10 @@ class ToolShopAdapter extends SiteAdapter {
         screenshotPath: errorScreenshotPath,
         steps: logger.getSteps(),
       };
-    } finally {
-      await this.close();
     }
+    // ★ No finally { close() } here — the service layer (_runPurchase)
+    //   manages adapter lifecycle and calls adapter.close() in its own finally block.
+    //   Having close() in both places caused a double-close bug.
   }
 }
 
