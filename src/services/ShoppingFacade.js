@@ -26,7 +26,7 @@ class ShoppingFacade {
    */
   constructor(getFactory) {
     if (typeof getFactory !== 'function') {
-      throw new Error('ShoppingFacade requires a getFactory function (Dependency Injection)');
+      throw new Error('ShoppingFacade requires a getFactory function');
     }
     this._getFactory = getFactory;
   }

@@ -170,8 +170,9 @@ async function _runPurchase(adapter, { product, shipping, requestId, taxRate = 0
       failedStep: 'purchase-flow',
     });
   } finally {
-    // ★ Bug fix: always close the adapter's browser after purchase to prevent resource leaks.
-    //   Before this fix, browser instances were never released after purchase completed.
+    // ★ Always close the adapter's browser after purchase to prevent resource leaks.
+    //   Adapter lifecycle is managed exclusively here (not inside adapter.purchase())
+    //   to avoid double-close errors with Playwright.
     try {
       if (adapter && typeof adapter.close === 'function') {
         await adapter.close();
