@@ -98,6 +98,17 @@ Key components:
 - `SiteAdapter` contract includes `isAlive()` and `close()` for lifecycle management
 - Fallback: if sessionId is missing or expired, purchase creates a fresh adapter (backward compatible)
 
+### Tax System (Strategy Pattern)
+
+The tax engine uses geo-based resolution with the Strategy pattern:
+
+- `taxPolicies.js` — data-only country rules (FLAT or THRESHOLD types)
+- `taxStrategies.js` — `FlatTaxStrategy` (US 8%, UK 20%, DE 19%) and `ThresholdTaxStrategy` (Israel: 0% below $150, 18% above)
+- `taxEngine.js` — Context that resolves buyer/seller countries → selects strategy → computes tax
+- `geoResolver.js` — IP-based country detection for buyer location
+
+Each site defines its own tax rate via its factory: Saucedemo → 8% (site charges 8% sales tax), ToolShop → 0% (site calculates tax server-side), Amazon → 0% (tax varies by state, site handles it).
+
 ## Setup & Installation
 
 ### Prerequisites
@@ -136,17 +147,18 @@ SAUCEDEMO_PASSWORD=secret_sauce
 
 # ToolShop
 TOOLSHOP_BASE_URL=https://practicesoftwaretesting.com
-TOOLSHOP_EMAIL=hw.assign.2026@test.com
-TOOLSHOP_PASSWORD="Aut0m@tion#Hw2026!"
+TOOLSHOP_API_URL=https://api.practicesoftwaretesting.com
+TOOLSHOP_EMAIL=gohok69228@dolofan.com
+TOOLSHOP_PASSWORD="gohok69228@A"
 ```
 
-> **Note:** The ToolShop password contains `#` — it must be wrapped in double quotes in the `.env` file.
+> **Note:** The ToolShop password contains special characters — it must be wrapped in double quotes in the `.env` file.
 
-> **Note:** The default ToolShop account (`customer@practicesoftwaretesting.com`) may get locked due to public usage. If that happens, register a new account via the Postman collection or run:
+> **Note:** The ToolShop test site resets its database every few minutes, wiping all registered accounts. The system handles this automatically via **auto-registration** (see section below). If manual registration is needed, run:
 > ```bash
 > curl -s -X POST https://api.practicesoftwaretesting.com/users/register \
 >   -H "Content-Type: application/json" \
->   -d '{"first_name":"Test","last_name":"Auto","city":"NY","state":"NY","country":"US","postcode":"10001","phone":"5551234567","dob":"1990-01-01","email":"YOUR_EMAIL","password":"YOUR_PASSWORD"}'
+>   -d '{"first_name":"Test","last_name":"Automation","address":"123 Test St","city":"New York","state":"NY","country":"US","postcode":"10001","phone":"5551234567","dob":"1990-01-01","email":"gohok69228@dolofan.com","password":"gohok69228@A"}'
 > ```
 
 > **Security:** `.env` is in `.gitignore` — credentials never enter Git. All credentials are loaded via `src/automation/config.js` which reads from `process.env`.
@@ -161,6 +173,39 @@ npm run server   # http://localhost:3000
 npm run client   # http://localhost:3500
 ```
 
+## ToolShop Auto-Registration
+
+### Why Auto-Registration Exists
+
+The ToolShop test site (`practicesoftwaretesting.com`) resets its database every few minutes, wiping all registered accounts. Without auto-registration, every automation run would fail with "Invalid credentials" within minutes.
+
+### How It Works
+
+1. Before every ToolShop login, the system calls `POST /users/register` on the ToolShop REST API
+2. If the account is created (201) → proceed to login
+3. If the account already exists (422) → proceed to login (this is expected)
+4. If registration fails (network error, 5xx) → log warning, still attempt login
+5. The registration step is visible in the status API as `Register ✓ (180ms)`
+
+### Robustness Features
+
+| Feature | Details |
+|---------|---------|
+| **Retry** | 2 attempts with exponential backoff (500ms → 1s) via `withRetry()` |
+| **Timeout** | 10 seconds per attempt via `AbortSignal.timeout()` |
+| **5xx retry** | Server errors trigger retry; client errors (4xx) do not |
+| **Graceful degradation** | Registration failure does NOT block login attempt |
+| **Input validation** | Email, password, apiUrl validated before HTTP call |
+| **Error parsing** | JSON responses parsed for readable error messages |
+
+### Tests
+
+```bash
+npx jest tests/unit/registerFlow.test.js
+```
+
+Test coverage: input validation, happy paths (201/422), error paths (400/500/network/timeout), retry behavior, and request body verification.
+
 ## Automation Flow — 10 Required Steps
 
 Both adapters implement the same 10 steps required by the assignment:
@@ -168,7 +213,7 @@ Both adapters implement the same 10 steps required by the assignment:
 | Step | Description | Saucedemo | ToolShop |
 |------|-------------|-----------|----------|
 | 1 | Launch browser (headless/headed) | `browserFactory.js` | `browserFactory.js` |
-| 2 | Login | username + password | email + password |
+| 2 | Login | username + password | email + password (auto-register first) |
 | 3 | Navigate to catalog/search | `/inventory` | home page |
 | 4 | Search/filter from UI query | Client-side filter (no search field) | Real search bar + API |
 | 5 | Scrape DOM → normalized format | `productParser.js` | `toolshopParser.js` |
@@ -185,12 +230,13 @@ The system recommends the cheapest product (marked with a green "Cheapest" badge
 
 ```
 1. Launch headless Chromium
-2. Login → /auth/login (email + password)
-3. Navigate to catalog (home page)
-4. Search → type query in search bar, waitForResponse on /products API
-5. Scrape results → parse product cards (name, price, image, URL)
-6. Select recommended product (cheapest-first policy) → recommendedId
-7. User clicks "Buy" → triggers purchase flow:
+2. Auto-register account via REST API (handles DB resets)
+3. Login → /auth/login (email + password)
+4. Navigate to catalog (home page)
+5. Search → type query in search bar, waitForResponse on /products API
+6. Scrape results → parse product cards (name, price, image, URL)
+7. Select recommended product (cheapest-first policy) → recommendedId
+8. User clicks "Buy" → triggers purchase flow:
    a. Login (if session expired)
    b. Navigate to catalog → find product by title → click
    c. Product detail page → "Add to Cart" → wait for toast/badge
@@ -200,7 +246,7 @@ The system recommends the cheapest product (marked with a green "Cheapest" badge
    g. Step 3 - Payment: select "Buy Now Pay Later", 3 installments
    h. Step 4 - Confirm: click "Finish" (with retry)
    i. Capture order confirmation screenshot (MANDATORY proof)
-8. Return PurchaseResult with screenshots and step trace
+9. Return PurchaseResult with screenshots and step trace
 ```
 
 ### Saucedemo Detailed Flow
@@ -367,9 +413,11 @@ Test coverage includes:
 - Product normalization (price as float, currency extraction)
 - Product selection policy (CHEAPEST, FIRST) and recommendedId integration
 - Cart calculations + duplicate guard
-- Tax engine + Oracle comparison
+- Tax engine + Oracle comparison (Strategy pattern)
+- Tax strategies unit tests (FlatTaxStrategy, ThresholdTaxStrategy, createStrategy factory)
 - API route validation (Zod schemas)
 - ToolShop selectors + parser (no duplicates, no overlap)
+- ToolShop auto-registration (input validation, happy paths, error paths, retry behavior)
 - Service layer with DI (FakeAdapter — no Playwright needed)
 - E2E: full Search → Cart → Checkout → Screenshot verification
 
@@ -380,6 +428,8 @@ Test coverage includes:
 - **Exponential backoff retry** — `withRetry()` (500ms → 1s → 2s, max 3 attempts)
 - **Input validation** — Zod schemas on all API endpoints
 - **Error handling** — user-friendly messages, error screenshots on failure
+- **Auto-registration** — ToolShop accounts re-created before every login (handles DB resets)
+- **Session continuity** — browser session shared between search and purchase via SessionStore
 
 ## Observability
 
@@ -409,7 +459,7 @@ The UI shows a real-time trace (via `StatusDisplay` component) of which steps co
 │   │   └── utils/        # retry, screenshot, stepLogger, normalizePrice, inputValidator
 │   ├── domain/           # Product, Cart, Order, CartCalculator (all immutable)
 │   ├── services/         # ShoppingFacade, searchService, purchaseService, statusStore, SessionStore
-│   └── tax/              # TaxEngine (Context) + taxStrategies (Strategy) + geoResolver
+│   └── tax/              # TaxEngine (Context) + taxStrategies (Strategy) + taxPolicies + geoResolver
 ├── client/               # React frontend
 │   └── src/
 │       ├── pages/        # SearchPage, PurchasePage, ResultPage
@@ -429,6 +479,6 @@ The UI shows a real-time trace (via `StatusDisplay` component) of which steps co
 - [x] README.md — setup, environment variables, automation flow
 - [x] AI_USAGE.md — tools, prompts, risky AI recommendations, secret protection
 - [x] README_AI_BUGS.md — 18 documented AI bugs with fixes
-- [x] Test output (`test-output.txt`) — 309+ passing tests
+- [x] Test output (`test-output.txt`) — 244+ passing tests
 - [x] Order confirmation screenshot (`screenshots/`)
 - [x] Postman collections for API verification
