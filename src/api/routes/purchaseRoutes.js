@@ -2,37 +2,28 @@
 //
 // POST /api/purchase — Asynchronous (Fire & Forget)
 //
-// ★ DI: Route handler creates the adapter and injects it into the service.
-//   The adapter is captured in the closure and passed to the background
-//   _runPurchase() task — no global state.
-//
-// Flow: validate → createAdapter(site) → executePurchase(adapter, payload) → 202 Accepted
+// ★ Facade Pattern: route delegates all coordination to ShoppingFacade.
+//   The route only does: validate → facade.purchase() → respond 202.
+//   Session reuse, adapter fallback, background orchestration — all hidden.
 
 const router = require('express').Router();
-const { executePurchase } = require('../../services/purchaseService');
-const { createAdapter } = require('../../automation/adapters/adapterFactory');
+const { ShoppingFacade } = require('../../services/ShoppingFacade');
 const { purchaseSchema, validate } = require('../middleware/validators');
+
+const facade = new ShoppingFacade();
 
 /**
  * POST /api/purchase
  *
- * Body: {
- *   site?: string,
- *   product: { id, title, price, currency, source },
- *   shipping: { firstName, lastName, postalCode }
- * }
- *
+ * Body: { site, sessionId?, product, shipping }
  * Response 202: { requestId, message, statusUrl }
- * Response 400: { error: "Validation failed", details: [...] }
- * Response 500: { error: "Purchase initiation failed: ..." }
  */
 router.post('/', validate(purchaseSchema), async (req, res, next) => {
   try {
-    const { site, product, shipping } = req.validated;
+    const { site, sessionId, product, shipping } = req.validated;
 
-    // ★ Composition Root: create adapter here, inject into service
-    const adapter = createAdapter(site);
-    const { requestId } = await executePurchase(adapter, { product, shipping });
+    // ★ Facade: single call hides session lookup + adapter fallback + fire-and-forget
+    const { requestId } = await facade.purchase({ site, sessionId, product, shipping });
 
     res.status(202).json({
       requestId,

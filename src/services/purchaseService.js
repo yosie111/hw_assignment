@@ -32,9 +32,6 @@ const { createOrder } = require('../domain/Order');
 const { calculateCart, EPSILON } = require('../domain/CartCalculator');
 const statusStore = require('./statusStore');
 
-// Tax rate — single source: config.js (reads from .env)
-const { TAX_RATE } = require('../automation/config');
-
 /**
  * Start async purchase — returns requestId immediately (202 Accepted).
  *
@@ -45,7 +42,7 @@ const { TAX_RATE } = require('../automation/config');
  * @returns {{ requestId: string }}
  * @throws {Error} if product or shipping invalid (Fail Fast)
  */
-async function executePurchase(adapter, { product, shipping }) {
+async function executePurchase(adapter, { product, shipping, taxRate = 0 }) {
   // Fail Fast — validate before spending resources
   if (!product || !product.title) {
     throw new Error('Valid product with title is required for purchase');
@@ -58,8 +55,7 @@ async function executePurchase(adapter, { product, shipping }) {
   statusStore.create(requestId, 'purchase');
 
   // Fire and Forget — return requestId immediately
-  // ★ adapter is captured in the closure — no global state
-  _runPurchase(adapter, { product, shipping, requestId }).catch((err) => {
+  _runPurchase(adapter, { product, shipping, requestId, taxRate }).catch((err) => {
     console.error(`[${requestId}] Unhandled purchase error:`, err.message);
   });
 
@@ -74,7 +70,7 @@ async function executePurchase(adapter, { product, shipping }) {
  * @param {Object} params
  * @private
  */
-async function _runPurchase(adapter, { product, shipping, requestId }) {
+async function _runPurchase(adapter, { product, shipping, requestId, taxRate = 0 }) {
   try {
     // ★ Adapter call — adapter handles browser, login, cart, checkout
     const result = await adapter.purchase({
@@ -107,7 +103,7 @@ async function _runPurchase(adapter, { product, shipping, requestId }) {
     // Compare Oracle subtotal vs Site subtotal
     let cartValidation = null;
     try {
-      const calc = calculateCart([product], { taxRate: TAX_RATE });
+      const calc = calculateCart([product], { taxRate });
 
       // Parse site values (subtotal, tax, total) from DOM text
       const parsePrice = (text) => parseFloat((text || '').replace(/[^0-9.]/g, ''));

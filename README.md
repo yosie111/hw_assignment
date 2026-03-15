@@ -29,14 +29,74 @@ search products, scrape results from the DOM, add to cart, fill checkout, and ca
 - `src/api/` — Express endpoints that trigger automation
 - `client/` — React frontend (search, results, cart, purchase screens)
 
-**Adapter Pattern:** Each target site implements `SiteAdapter` (search + purchase) with its own selectors and flows. The service layer has zero knowledge of which site it's talking to. Adding a new site = 1 adapter class + 1 registry line in `adapterFactory.js`.
+**Adapter Pattern:** Each target site implements `SiteAdapter` (search + purchase) with its own selectors and flows. The service layer has zero knowledge of which site it's talking to.
+
+### Design Patterns (Chapter 12)
+
+Six patterns applied, each in a concrete file:
+
+| Pattern | File(s) | Role |
+|---------|---------|------|
+| **Bridge** | `SiteAdapter.js` (Abstraction) ↔ `SiteFlows.js` (Implementor) | Separates orchestration (open → login → search → close) from site-specific DOM logic. Adapter defines WHAT; Flows define HOW. They vary independently. |
+| **Adapter** | `SauceDemoAdapter.js`, `ToolShopAdapter.js` | Normalizes each site's raw DOM data into `NormalizedProduct` / `PurchaseResult` — a common interface the services expect. |
+| **Facade** | `ShoppingFacade.js` | Hides subsystem coordination (adapterFactory + searchService + sessionStore + purchaseService) behind two methods: `search()` and `purchase()`. Routes call only the Facade. |
+| **Abstract Factory** | `abstractFactory.js` → `SauceDemoFactory`, `ToolShopFactory` | Creates consistent families of site objects (adapter + flows + config). Guarantees you cannot mix SauceDemoAdapter with ToolShop flows. |
+| **Strategy** | `taxStrategies.js` → `FlatTaxStrategy`, `ThresholdTaxStrategy` | Each tax algorithm is a class. `taxEngine.js` (Context) delegates rate calculation to the strategy. Adding a new tax rule = one class, zero changes to the engine. |
+| **Singleton + DCL** | `sessionStore.js` → `SessionStore` class | Exactly one session store across the app. `getInstance()` with double-checked locking guard. Prevents split-brain where search stores in one instance and purchase looks in another. |
 
 ```
-Client (site="toolshop") → API Route → Validator → adapterFactory.createAdapter("toolshop")
-                                                          ↓
-                              Service ← adapter.search() ← ToolShopAdapter
-                                      ← adapter.purchase()
+ ┌──────────┐
+ │  Routes  │─── ShoppingFacade (Facade) ──────┐
+ └──────────┘                                   │
+                                                ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │  ShoppingFacade.search(site, params)                    │
+ │    → AbstractFactory.getFactory(site).createAdapter()   │
+ │    → searchService.executeSearch(adapter, params)       │
+ │    → SessionStore.getInstance().store(adapter)          │
+ │                                                         │
+ │  ShoppingFacade.purchase({ sessionId, ... })            │
+ │    → SessionStore.getInstance().consume(sessionId)      │
+ │    → purchaseService.executePurchase(adapter, params)   │
+ └─────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+ ┌──────────────────────────────────┐
+ │  SauceDemoAdapter (Abstraction)  │──── Bridge ────▶ SauceDemoFlows (Implementor)
+ │  ToolShopAdapter  (Abstraction)  │──── Bridge ────▶ ToolShopFlows  (Implementor)
+ └──────────────────────────────────┘
+                        │
+                        ▼
+ ┌──────────────────────────────────┐
+ │  TaxEngine (Context)            │──── Strategy ──▶ FlatTaxStrategy
+ │                                  │                ▶ ThresholdTaxStrategy
+ └──────────────────────────────────┘
 ```
+
+### Session Continuity (Search → Purchase)
+
+The browser session is shared between search and purchase to avoid double login:
+
+```
+POST /api/search
+  → Facade.search()
+    → AbstractFactory → createAdapter()
+    → adapter.search()                    ← browser opens, login, scrape
+    → SessionStore.store(adapter)         ← browser stays alive (Singleton)
+    → response: { products, sessionId }
+
+POST /api/purchase { sessionId }
+  → Facade.purchase()
+    → SessionStore.consume(sessionId)     ← retrieve same adapter (browser alive)
+    → adapter.purchase()                  ← no re-login, reuse session
+    → adapter.close()                     ← browser closes after purchase
+```
+
+Key components:
+- `SessionStore` (Singleton) — TTL-based Map, 5 min TTL, auto `adapter.close()` on eviction
+- Adapters use `_ensureBrowser()` for lazy browser init — only opens browser on first call
+- `SiteAdapter` contract includes `isAlive()` and `close()` for lifecycle management
+- Fallback: if sessionId is missing or expired, purchase creates a fresh adapter (backward compatible)
 
 ## Setup & Installation
 
@@ -194,7 +254,8 @@ Response (200):
       "calc": { "subtotal": 7.99, "tax": 0, "total": 7.99 }
     }
   ],
-  "recommendedId": "sauce-labs-onesie"
+  "recommendedId": "sauce-labs-onesie",
+  "sessionId": "uuid (pass to POST /api/purchase for session continuity)"
 }
 ```
 
@@ -203,6 +264,7 @@ Response (200):
 ```json
 {
   "site": "saucedemo",
+  "sessionId": "uuid (optional — from search response, enables session continuity)",
   "product": {
     "id": "sauce-labs-onesie",
     "title": "Sauce Labs Onesie",
@@ -339,14 +401,15 @@ The UI shows a real-time trace (via `StatusDisplay` component) of which steps co
 ├── src/
 │   ├── api/              # Express routes + middleware + validators
 │   ├── automation/       # Playwright automation
-│   │   ├── adapters/     # SiteAdapter interface, SauceDemoAdapter, ToolShopAdapter, AmazonAdapter
+│   │   ├── adapters/     # SiteAdapter (Bridge abstraction), SiteFlows (Bridge implementor),
+│   │   │                 # abstractFactory, SauceDemoAdapter, ToolShopAdapter, AmazonAdapter
 │   │   ├── browser/      # browserFactory (Chromium + stealth)
 │   │   ├── sites/        # Per-site: selectors, flows, parsers
 │   │   ├── policies/     # selectProduct (CHEAPEST / FIRST)
 │   │   └── utils/        # retry, screenshot, stepLogger, normalizePrice, inputValidator
 │   ├── domain/           # Product, Cart, Order, CartCalculator (all immutable)
-│   ├── services/         # searchService, purchaseService, statusStore
-│   └── tax/              # Tax engine + geo resolver
+│   ├── services/         # ShoppingFacade, searchService, purchaseService, statusStore, SessionStore
+│   └── tax/              # TaxEngine (Context) + taxStrategies (Strategy) + geoResolver
 ├── client/               # React frontend
 │   └── src/
 │       ├── pages/        # SearchPage, PurchasePage, ResultPage
@@ -366,6 +429,6 @@ The UI shows a real-time trace (via `StatusDisplay` component) of which steps co
 - [x] README.md — setup, environment variables, automation flow
 - [x] AI_USAGE.md — tools, prompts, risky AI recommendations, secret protection
 - [x] README_AI_BUGS.md — 18 documented AI bugs with fixes
-- [x] Test output (`test-output.txt`) — 244+ passing tests
+- [x] Test output (`test-output.txt`) — 309+ passing tests
 - [x] Order confirmation screenshot (`screenshots/`)
 - [x] Postman collections for API verification

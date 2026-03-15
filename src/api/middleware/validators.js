@@ -30,6 +30,7 @@ const searchSchema = z.object({
 // ─── Purchase Schema ───
 const purchaseSchema = z.object({
   site: siteEnum,
+  sessionId: z.string().optional().nullable(),  // ★ Session continuity: from search response
   product: z.object({
     id: z.string().min(1, 'Product ID is required'),
     title: z.string().min(1, 'Product title is required'),

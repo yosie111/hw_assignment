@@ -28,9 +28,6 @@ const { calculateCart } = require('../domain/CartCalculator');
 const { selectProduct } = require('../automation/policies/selectProduct');
 const statusStore = require('./statusStore');
 
-// Tax rate — single source: config.js (reads from .env)
-const { TAX_RATE } = require('../automation/config');
-
 /**
  * Execute search: adapter → Domain Gatekeeper → Oracle enrichment.
  *
@@ -41,7 +38,7 @@ const { TAX_RATE } = require('../automation/config');
  * @returns {Promise<{ requestId: string, products: Object[] }>}
  * @throws {Error} if adapter crashes (statusStore also marked as failed)
  */
-async function executeSearch(adapter, { query, filters } = {}) {
+async function executeSearch(adapter, { query, filters, taxRate = 0 } = {}) {
   const requestId = randomUUID();
   statusStore.create(requestId, 'search');
 
@@ -62,7 +59,7 @@ async function executeSearch(adapter, { query, filters } = {}) {
         const product = createProduct(raw);
 
         // Oracle: calculate tax for this product (for UI display BEFORE purchase)
-        const calc = calculateCart([product], { taxRate: TAX_RATE });
+        const calc = calculateCart([product], { taxRate });
 
         products.push({
           ...product,

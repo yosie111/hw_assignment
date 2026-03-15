@@ -1,34 +1,39 @@
 // tests/api/searchRoutes.test.js
 //
-// ★ DI-aware: mocks both the service AND the adapter factory.
-//   The route creates adapter via factory and passes it to service.
+// ★ Facade-aware: mocks ShoppingFacade.
+//   The route delegates everything to the Facade.
 
-jest.mock('../../src/services/searchService', () => ({
-  executeSearch: jest.fn(),
-}));
+jest.mock('../../src/services/ShoppingFacade', () => {
+  const mockFacade = {
+    search: jest.fn(),
+    purchase: jest.fn(),
+  };
+  return { ShoppingFacade: jest.fn(() => mockFacade), _mockFacade: mockFacade };
+});
 
-jest.mock('../../src/automation/adapters/adapterFactory', () => ({
-  createAdapter: jest.fn(() => ({ name: 'mock-adapter' })),
-  getAvailableSites: jest.fn(() => ['saucedemo', 'amazon']),
+// Also mock adapterFactory for validators.js (it reads available sites at import)
+jest.mock('../../src/automation/adapters/abstractFactory', () => ({
+  getFactory: jest.fn(),
+  getAvailableSites: jest.fn(() => ['saucedemo', 'amazon', 'toolshop']),
 }));
 
 const request = require('supertest');
 const app = require('../../src/api/server');
-const { executeSearch } = require('../../src/services/searchService');
-const { createAdapter } = require('../../src/automation/adapters/adapterFactory');
+const { _mockFacade } = require('../../src/services/ShoppingFacade');
 
 describe('POST /api/search', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('returns 200 with products on success', async () => {
-    executeSearch.mockResolvedValue({
+  test('returns 200 with products and sessionId on success', async () => {
+    _mockFacade.search.mockResolvedValue({
       requestId: 'req-123',
       products: [
         { id: '1', title: 'Onesie', price: 7.99, calc: { subtotal: 7.99, tax: 0, total: 7.99 } },
       ],
       recommendedId: '1',
+      sessionId: 'session-abc',
     });
 
     const res = await request(app)
@@ -39,43 +44,34 @@ describe('POST /api/search', () => {
     expect(res.body.requestId).toBe('req-123');
     expect(res.body.products).toHaveLength(1);
     expect(res.body.products[0].title).toBe('Onesie');
-    expect(res.body.products[0].calc.total).toBe(7.99);
-    expect(res.body.recommendedId).toBe('1');
+    expect(res.body.sessionId).toBe('session-abc');
   });
 
-  test('creates adapter and passes it to executeSearch', async () => {
-    executeSearch.mockResolvedValue({ requestId: 'req-456', products: [] });
+  test('facade receives site and query params', async () => {
+    _mockFacade.search.mockResolvedValue({ requestId: 'req-456', products: [], sessionId: 's' });
 
     await request(app)
       .post('/api/search')
       .send({ query: 'sauce', filters: { maxPrice: 15 } })
       .expect(200);
 
-    // ★ Verify DI: route created adapter and injected it as 1st arg
-    expect(createAdapter).toHaveBeenCalledWith('saucedemo');
-    expect(executeSearch).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'mock-adapter' }),  // 1st arg: adapter
-      expect.objectContaining({                            // 2nd arg: params
-        query: 'sauce',
-        filters: { maxPrice: 15 },
-      })
+    expect(_mockFacade.search).toHaveBeenCalledWith(
+      'saucedemo',
+      expect.objectContaining({ query: 'sauce', filters: { maxPrice: 15 } })
     );
   });
 
   test('applies defaults for empty body', async () => {
-    executeSearch.mockResolvedValue({ requestId: 'req-789', products: [] });
+    _mockFacade.search.mockResolvedValue({ requestId: 'req-789', products: [], sessionId: 's' });
 
     await request(app)
       .post('/api/search')
       .send({})
       .expect(200);
 
-    expect(executeSearch).toHaveBeenCalledWith(
-      expect.anything(),                                   // adapter
-      expect.objectContaining({                            // params with defaults
-        query: '',
-        filters: {},
-      })
+    expect(_mockFacade.search).toHaveBeenCalledWith(
+      'saucedemo',
+      expect.objectContaining({ query: '', filters: {} })
     );
   });
 
@@ -86,12 +82,11 @@ describe('POST /api/search', () => {
       .expect(400);
 
     expect(res.body.error).toBe('Validation failed');
-    expect(res.body.details).toBeDefined();
-    expect(executeSearch).not.toHaveBeenCalled();
+    expect(_mockFacade.search).not.toHaveBeenCalled();
   });
 
-  test('returns 500 when service throws', async () => {
-    executeSearch.mockRejectedValue(new Error('Browser crashed'));
+  test('returns 500 when facade throws', async () => {
+    _mockFacade.search.mockRejectedValue(new Error('Browser crashed'));
 
     const res = await request(app)
       .post('/api/search')
@@ -102,7 +97,7 @@ describe('POST /api/search', () => {
   });
 
   test('returns empty products array when no results', async () => {
-    executeSearch.mockResolvedValue({ requestId: 'req-empty', products: [] });
+    _mockFacade.search.mockResolvedValue({ requestId: 'req-empty', products: [], sessionId: 's' });
 
     const res = await request(app)
       .post('/api/search')

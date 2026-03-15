@@ -46,6 +46,24 @@ class SiteAdapter {
   }
 
   /**
+   * Whether the adapter has a live browser session.
+   * Used by sessionStore to check if the adapter is still usable.
+   * @returns {boolean}
+   */
+  isAlive() {
+    return false;
+  }
+
+  /**
+   * Close the adapter's browser and release resources.
+   * Called by sessionStore on TTL expiration or after purchase completes.
+   * Default: no-op (adapters that manage browser state override this).
+   */
+  async close() {
+    // Default no-op — subclasses override if they hold browser state
+  }
+
+  /**
    * Search for products on the site.
    *
    * Contract:

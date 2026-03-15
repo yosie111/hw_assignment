@@ -146,6 +146,11 @@ describe('E2E — Full Purchase Flow (Search → Cart → Checkout → Success)'
   // THIS is the mandatory E2E test the assignment requires:
   //   Search → select product → Add to Cart → Checkout → Screenshot
   //
+  // ★ SESSION CONTINUITY: After the refactoring, search() keeps the
+  //   browser alive. purchase() reuses the SAME browser session —
+  //   no second login, no re-navigation. The browser opens once,
+  //   logs in once, and both operations share the session.
+  //
   // Covers: ALL 10 automation steps + screenshot proof
   // ─────────────────────────────────────────────────────────────────
   test('Steps 1-10: Full purchase flow produces confirmation screenshot', async () => {

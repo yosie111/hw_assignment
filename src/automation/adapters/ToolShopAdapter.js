@@ -2,15 +2,8 @@
 //
 // Concrete adapter for https://practicesoftwaretesting.com
 //
-// Responsibilities:
-//   1. Browser lifecycle (open → close in finally)
-//   2. Login with ToolShop credentials
-//   3. Delegate to site-specific flows (loginFlow, searchFlow, cartFlow, checkoutFlow)
-//   4. Step logging via createStepLogger
-//   5. Error screenshots on purchase failure
-//
-// Does NOT touch: Domain (Product, Order), Services, StatusStore.
-// Those live in higher layers — adapter is pure automation.
+// ★ Bridge Pattern: adapter (Abstraction) receives ToolShopFlows (Implementor)
+// ★ Session Continuity: _ensureBrowser() + close() lifecycle
 
 const { SiteAdapter } = require('./SiteAdapter');
 const { launchBrowser } = require('../browser/browserFactory');
@@ -19,97 +12,103 @@ const { validateSearchInput, validatePurchaseInput } = require('../utils/inputVa
 const { takeScreenshot } = require('../utils/screenshot');
 const config = require('../config');
 
-// Site-specific flows
-const { login } = require('../sites/toolshop/flows/loginFlow');
-const { searchProducts } = require('../sites/toolshop/flows/searchFlow');
-const { addToCart } = require('../sites/toolshop/flows/cartFlow');
-const { checkout } = require('../sites/toolshop/flows/checkoutFlow');
+// Bridge: default implementor
+const { ToolShopFlows } = require('./SiteFlows');
 
 class ToolShopAdapter extends SiteAdapter {
+  /**
+   * @param {SiteFlows} [flows] — Bridge Implementor
+   */
+  constructor(flows) {
+    super();
+    this._flows = flows || new ToolShopFlows({
+      baseUrl:  config.TOOLSHOP_BASE_URL,
+      apiUrl:   config.TOOLSHOP_API_URL,
+      email:    config.TOOLSHOP_EMAIL,
+      password: config.TOOLSHOP_PASSWORD,
+    });
+    this._browser = null;
+    this._page = null;
+    this._loggedIn = false;
+  }
+
   get name() {
     return 'toolshop';
   }
 
-  /**
-   * @param {Object} params - { query, filters, requestId, onStep }
-   * @returns {Promise<NormalizedProduct[]>}
-   */
+  isAlive() {
+    return this._browser !== null && this._browser.isConnected();
+  }
+
+  async close() {
+    if (this._browser) {
+      try {
+        await this._browser.close();
+      } catch (_) { /* already closed */ }
+      this._browser = null;
+      this._page = null;
+      this._loggedIn = false;
+    }
+  }
+
+  async _ensureBrowser(logger) {
+    if (this.isAlive() && this._loggedIn) {
+      return this._page;
+    }
+
+    const launched = await logger.runStep('OpenBrowser', () =>
+      launchBrowser()
+    );
+    this._browser = launched.browser;
+    this._page = launched.page;
+
+    // ★ Bridge: delegate login to the Implementor
+    await logger.runStep('Login', () =>
+      this._flows.login(this._page)
+    );
+    this._loggedIn = true;
+
+    return this._page;
+  }
+
   async search({ query, filters, requestId, onStep }) {
     validateSearchInput({ query, filters });
 
     const logger = createStepLogger(requestId, onStep);
-    let browser;
 
     try {
-      const launched = await logger.runStep('OpenBrowser', () =>
-        launchBrowser()
-      );
-      browser = launched.browser;
-      const page = launched.page;
+      const page = await this._ensureBrowser(logger);
 
-      await logger.runStep('Login', () =>
-        login(page, {
-          email: config.TOOLSHOP_EMAIL,
-          password: config.TOOLSHOP_PASSWORD,
-          baseUrl: config.TOOLSHOP_BASE_URL,
-          apiUrl: config.TOOLSHOP_API_URL,
-        })
-      );
-
+      // ★ Bridge: delegate search to Implementor
       const products = await logger.runStep('SearchAndScrape', () =>
-        searchProducts(page, {
-          query,
-          filters,
-          baseUrl: config.TOOLSHOP_BASE_URL,
-        })
+        this._flows.search(page, { query, filters })
       );
 
       return products;
-    } finally {
-      if (browser) await browser.close();
+    } catch (error) {
+      await this.close();
+      throw error;
     }
   }
 
-  /**
-   * @param {Object} params - { productTitle, shipping, requestId, onStep }
-   * @returns {Promise<PurchaseResult>}
-   */
   async purchase({ productTitle, shipping, requestId, onStep }) {
     validatePurchaseInput({ productTitle, shipping });
 
     const logger = createStepLogger(requestId, onStep);
-    let browser;
-    let page;
     let lastStep = 'Init';
 
     try {
-      const launched = await logger.runStep('OpenBrowser', () =>
-        launchBrowser()
-      );
-      browser = launched.browser;
-      page = launched.page;
-
-      await logger.runStep('Login', () =>
-        login(page, {
-          email: config.TOOLSHOP_EMAIL,
-          password: config.TOOLSHOP_PASSWORD,
-          baseUrl: config.TOOLSHOP_BASE_URL,
-          apiUrl: config.TOOLSHOP_API_URL,
-        })
-      );
+      const page = await this._ensureBrowser(logger);
       lastStep = 'Login';
 
+      // ★ Bridge: delegate cart and checkout to Implementor
       const cartResult = await logger.runStep('AddToCart', () =>
-        addToCart(page, {
-          title: productTitle,
-          requestId,
-          baseUrl: config.TOOLSHOP_BASE_URL,
-        })
+        this._flows.addToCart(page, { title: productTitle, requestId })
       );
       lastStep = 'AddToCart';
 
       const checkoutResult = await logger.runStep('Checkout', () =>
-        checkout(page, { shipping, requestId })
+        this._flows.checkout(page, { shipping, requestId })
       );
       lastStep = 'Checkout';
 
@@ -121,14 +120,11 @@ class ToolShopAdapter extends SiteAdapter {
         steps: logger.getSteps(),
       };
     } catch (error) {
-      // ★ Error screenshot — capture browser state at failure point
       let errorScreenshotPath = null;
-      if (page) {
+      if (this._page) {
         try {
-          errorScreenshotPath = await takeScreenshot(page, requestId, 'ERROR');
-        } catch (_) {
-          /* ignore screenshot failure */
-        }
+          errorScreenshotPath = await takeScreenshot(this._page, requestId, 'ERROR');
+        } catch (_) { /* ignore */ }
       }
 
       return {
@@ -140,7 +136,7 @@ class ToolShopAdapter extends SiteAdapter {
         steps: logger.getSteps(),
       };
     } finally {
-      if (browser) await browser.close();
+      await this.close();
     }
   }
 }

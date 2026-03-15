@@ -1,21 +1,24 @@
 // src/tax/taxEngine.js
 //
-// TaxEngine — resolves applicable tax rate.
+// TaxEngine — Context in the Strategy pattern.
 //
-// Architecture:
-//   geoResolver(ip) → country code
-//   taxPolicies[country] → rule (FLAT / THRESHOLD)
-//   resolve() → { taxRate, taxAmount, rule, label, ... }
+// Chapter 12 mapping:
+//   Context  = this module (resolve function)
+//   Strategy = TaxStrategy (base class in taxStrategies.js)
+//
+// The engine selects a strategy based on buyer/seller countries,
+// then delegates the actual rate calculation to the strategy.
+// It never knows HOW the rate is computed — only that it can
+// call strategy.calculate(subtotal) and get back { rate, ruleSuffix }.
 //
 // Design:
-//   - Domestic purchase (buyer === seller) → seller country policy
-//   - Import purchase   (buyer !== seller) → buyer country policy (import tax)
-//   - Unknown country → DEFAULT policy (0%)
-//
-// The engine does NOT calculate the cart. It only decides the rate.
-// CartCalculator does the actual math.
+//   geoResolver(ip) → country code
+//   taxPolicies[country] → raw policy config
+//   createStrategy(policy) → TaxStrategy instance
+//   strategy.calculate(subtotal) → { rate, ruleSuffix }
 
 const policies = require('./taxPolicies');
+const { createStrategy } = require('./taxStrategies');
 const { resolveBuyerCountry, resolveSellerCountry } = require('./geoResolver');
 
 /**
@@ -38,39 +41,21 @@ function resolve({
   const buyer = buyerCountry || resolveBuyerCountry(buyerIp);
   const seller = sellerCountry || resolveSellerCountry();
 
-  // Step 2: Pick policy
-  //   Domestic purchase (buyer === seller) → seller's policy (= buyer's, same country)
-  //   Import purchase   (buyer !== seller) → buyer's policy  (import tax rules)
-  //
-  //   ★ Note: For Saucedemo Oracle matching, this works because TAX_RATE=0
-  //     in config.js bypasses the engine entirely. The engine is used for
-  //     multi-country scenarios (e.g., IL buyer importing from US seller).
+  // Step 2: Select the policy key
   const isDomestic = buyer === seller;
   const policyKey = isDomestic ? seller : buyer;
-  const policy = policies[policyKey] || policies.DEFAULT;
+  const policyConfig = policies[policyKey] || policies.DEFAULT;
 
-  // Step 3: Calculate rate based on policy type
-  let taxRate;
-  let ruleSuffix;
+  // Step 3: ★ Strategy Pattern — create strategy from policy config
+  const strategy = createStrategy(policyConfig);
 
-  if (policy.type === 'THRESHOLD') {
-    if (subtotal <= policy.threshold) {
-      taxRate = policy.belowRate;
-      ruleSuffix = 'BELOW_THRESHOLD';
-    } else {
-      taxRate = policy.aboveRate;
-      ruleSuffix = 'ABOVE_THRESHOLD';
-    }
-  } else {
-    // FLAT
-    taxRate = policy.rate;
-    ruleSuffix = 'FLAT';
-  }
+  // Step 4: Delegate rate calculation to the strategy
+  const { rate: taxRate, ruleSuffix } = strategy.calculate(subtotal);
 
-  // Step 4: Calculate tax amount (IEEE 754 safe)
+  // Step 5: Calculate tax amount (IEEE 754 safe)
   const taxAmount = Math.round(subtotal * taxRate * 100) / 100;
 
-  // Step 5: Build rule name
+  // Step 6: Build rule name
   const tradeType = isDomestic ? 'DOMESTIC' : 'IMPORT';
   const rule = `${policyKey}_${tradeType}_${ruleSuffix}`;
 
@@ -78,10 +63,10 @@ function resolve({
     taxRate,
     taxAmount,
     rule,
-    label: policy.label,
+    label: strategy.label,
     buyerCountry: buyer,
     sellerCountry: seller,
-    threshold: policy.threshold || null,
+    threshold: strategy.threshold || null,
   });
 }
 

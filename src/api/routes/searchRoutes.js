@@ -2,39 +2,30 @@
 //
 // POST /api/search — Synchronous search
 //
-// ★ DI: Route handler creates the adapter and injects it into the service.
-//   This is the "composition root" — the only place that knows about
-//   both the factory and the service.
-//
-// Flow: validate → createAdapter(site) → executeSearch(adapter, payload) → 200
+// ★ Facade Pattern: route delegates all coordination to ShoppingFacade.
+//   The route only does: validate → facade.search() → respond.
+//   It never touches adapters, session store, or services directly.
 
 const router = require('express').Router();
-const { executeSearch } = require('../../services/searchService');
-const { createAdapter } = require('../../automation/adapters/adapterFactory');
+const { ShoppingFacade } = require('../../services/ShoppingFacade');
 const { searchSchema, validate } = require('../middleware/validators');
+
+const facade = new ShoppingFacade();
 
 /**
  * POST /api/search
  *
  * Body: { site?: string, query: string, filters?: { maxPrice?: number } }
- *
- * Response 200: { requestId, products: [{ id, title, price, …, calc }] }
- * Response 400: { error: "Validation failed", details: [...] }
- * Response 500: { error: "Search failed: ..." }
+ * Response 200: { requestId, products, recommendedId, sessionId }
  */
 router.post('/', validate(searchSchema), async (req, res, next) => {
   try {
     const { site, query, filters } = req.validated;
 
-    // ★ Composition Root: create adapter here, inject into service
-    const adapter = createAdapter(site);
-    const result = await executeSearch(adapter, { query, filters });
+    // ★ Facade: single call hides adapter creation + search + session storage
+    const result = await facade.search(site, { query, filters });
 
-    res.json({
-      requestId: result.requestId,
-      products: result.products,
-      recommendedId: result.recommendedId,
-    });
+    res.json(result);
   } catch (error) {
     next(error);
   }

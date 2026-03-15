@@ -76,14 +76,31 @@ class FakeAdapter extends SiteAdapter {
     this._purchaseResult = options.purchaseResult || DEFAULT_PURCHASE_RESULT;
     this._searchError = null;
     this._purchaseError = null;
+    this._alive = true;
+    this._closed = false;
 
     // Spy-friendly: track all calls
     this.searchCalls = [];
     this.purchaseCalls = [];
+    this.closeCalls = 0;
   }
 
   get name() {
     return 'fake';
+  }
+
+  // ─── Session-aware methods (match real adapter contract) ───
+
+  /** Fake browser is always "alive" until close() is called */
+  isAlive() {
+    return this._alive && !this._closed;
+  }
+
+  /** Track close calls for testing session cleanup */
+  async close() {
+    this._alive = false;
+    this._closed = true;
+    this.closeCalls++;
   }
 
   // ─── Configuration helpers (for tests) ───
