@@ -2,7 +2,7 @@
 //
 // Zod schemas for request validation + Express middleware factory.
 //
-// ★ DI Change: site enum is built dynamically from adapterFactory.
+// ★ Layer separation: site enum is built dynamically from the service layer (ShoppingFacade).
 //   When a new adapter is registered, validators automatically accept it.
 //
 // Design:
